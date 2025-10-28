@@ -50,7 +50,7 @@ public class TransactionDaoImpl implements TransactionDao {
     }
 
     @Override
-    public List<ProductSales> getProductWiseTotalSales() {
+    public List<ProductSales> getProductWiseTotalSale() {
         return repository.getProductWiseTotalSale();
     }
 

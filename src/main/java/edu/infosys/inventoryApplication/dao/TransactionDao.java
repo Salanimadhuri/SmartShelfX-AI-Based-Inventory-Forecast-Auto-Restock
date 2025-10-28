@@ -12,7 +12,7 @@ public interface TransactionDao {
     public void deleteById(Long id);
     public List<Transaction> findTransactionsByType(String type);
     public void removeTransactionById(Long id);
-    public List<ProductSales> getProductWiseTotalSales();
+    public List<ProductSales> getProductWiseTotalSale();
     public  List<Double> getDemandByProduct(String productId);
     	
 }

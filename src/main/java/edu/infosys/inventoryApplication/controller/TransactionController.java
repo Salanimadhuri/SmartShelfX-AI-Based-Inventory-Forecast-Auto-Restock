@@ -1,6 +1,8 @@
 package edu.infosys.inventoryApplication.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -81,8 +83,13 @@ public class TransactionController {
     }
 
     @GetMapping("/analysis")
-    public List<ProductSales> getProductWiseTotalSale() {
-        return dao.getProductWiseTotalSales();
+    public Map<String, Double> getProductWiseTotalSale() {
+        List<ProductSales> salesList = dao.getProductWiseTotalSale();
+        Map<String, Double> salesMap = new HashMap<>();
+        for (ProductSales ps : salesList) {
+            salesMap.put(ps.getProductName(), ps.getTotalSalesValue());
+        }
+        return salesMap;
     }
 
     @GetMapping("/analysis/{id}")

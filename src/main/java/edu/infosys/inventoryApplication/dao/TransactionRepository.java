@@ -21,7 +21,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     @Query("SELECT new edu.infosys.inventoryApplication.bean.ProductSales(p.productName, SUM(t.transactionValue)) " +
            "FROM Product p JOIN Transaction t ON p.productId = t.productId " +
-           "WHERE t.transactionType='OUT' GROUP BY p.productId ")
+           "WHERE t.transactionType='issue' GROUP BY p.productId ")
     List<ProductSales> getProductWiseTotalSale();
     
     @Query("SELECT t.transactionValue from Transaction t WHERE t.transactionType='OUT' and t.productId=?1")
