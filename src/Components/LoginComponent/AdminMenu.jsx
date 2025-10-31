@@ -8,7 +8,7 @@ const AdminMenu = () => {
     <div
       className="container-fluid"
       style={{
-        background: "linear-gradient(135deg, #e3f2fd 55%, #bbdefb 100%)",
+        background: "linear-gradient(135deg, #f3f5ff 0%, #e8edff 100%)",
         minHeight: "100vh",
         fontFamily: "'Poppins', sans-serif",
       }}
@@ -17,74 +17,89 @@ const AdminMenu = () => {
       <div
         align="center"
         style={{
-          background: "linear-gradient(90deg, #1e88e5 65%, #1976d2 100%)",
-          padding: "18px 0",
-          color: "#fff",
+          background: "linear-gradient(90deg, #243b55 0%, #141e30 100%)",
+          padding: "28px 0",
+          color: "#fdd835",
           fontWeight: 800,
-          fontSize: "2.05rem",
-          letterSpacing: "1px",
-          boxShadow: "0 4px 14px rgba(25, 118, 210, 0.15)",
-          borderRadius: "0 0 22px 22px",
+          fontSize: "2.5rem",
+          letterSpacing: "1.5px",
+          textShadow: "2px 2px 10px rgba(0,0,0,0.4)",
+          borderBottom: "3px solid #fbc02d",
+          boxShadow: "0 4px 20px rgba(36,59,85,0.4)",
         }}
       >
-        Inventory Admin Dashboard
+        SmartShelf<span style={{ color: "#ffffff" }}>FX</span>
       </div>
 
       {/* Navigation Bar */}
       <Navbar
         expand="lg"
         style={{
-          background: "#fff",
-          borderRadius: "0 0 13px 13px",
-          margin: "28px auto 15px",
-          boxShadow: "0 3px 18px rgba(21,101,192,0.12)",
-          maxWidth: "90%",
-          padding: "10px 22px",
+          background: "#ffffff",
+          borderRadius: "14px",
+          margin: "30px auto",
+          boxShadow: "0 4px 25px rgba(0,0,0,0.08)",
+          maxWidth: "88%",
+          padding: "12px 24px",
         }}
       >
         <Navbar.Collapse id="basic-navbar-nav">
-          <Nav style={{ fontWeight: "400", width: "100%" }}>
-            {/* SKU Dropdown */}
+          <Nav style={{ fontWeight: "500", width: "100%", fontSize: "1rem" }}>
             <NavDropdown title="SKU" id="sku-nav-dropdown">
               <NavDropdown.Item href="/SkuRepo?from=admin">SKU List</NavDropdown.Item>
               <NavDropdown.Item href="/SkuAdd">SKU Addition</NavDropdown.Item>
             </NavDropdown>
-            {/* Product Dropdown */}
+
             <NavDropdown title="Product" id="product-nav-dropdown">
               <NavDropdown.Item href="/AdProdRepo">Product List</NavDropdown.Item>
               <NavDropdown.Item href="/ProductAdd">Product Addition</NavDropdown.Item>
-              <NavDropdown
-                title="Product Analysis"
-                id="product-analysis-dropdown"
-                drop="end"
-              >
+              <NavDropdown title="Product Analysis" id="product-analysis-dropdown" drop="end">
                 <NavDropdown.Item href="/AllProductAnalysis">All Product Sales</NavDropdown.Item>
                 <NavDropdown.Item href="/SingleProductDemand">Single Product Demand</NavDropdown.Item>
               </NavDropdown>
             </NavDropdown>
-            {/* Transaction Dropdown */}
+
             <NavDropdown title="Transaction" id="transaction-nav-dropdown">
               <NavDropdown.Item href="/Transactions?type=issue">Issued History</NavDropdown.Item>
               <NavDropdown.Item href="/Transactions?type=purchase">Purchase History</NavDropdown.Item>
               <NavDropdown.Item href="/Transactions">Transaction History</NavDropdown.Item>
             </NavDropdown>
-            {/* Push Logout to far right */}
+
+            <Nav.Link
+              href="/ShowSingleUser"
+              style={{
+                color: "#283593",
+                fontWeight: 600,
+                marginLeft: "10px",
+                marginRight: "auto",
+                transition: "all 0.3s ease",
+              }}
+              onMouseOver={(e) => (e.target.style.color = "#1a237e")}
+              onMouseOut={(e) => (e.target.style.color = "#283593")}
+            >
+              Show User Details
+            </Nav.Link>
+
             <Nav.Link
               href="/"
               style={{
                 color: "#fff",
                 fontWeight: 600,
-                background: "linear-gradient(90deg, #ef5350, #e53935 80%)",
-                borderRadius: "8px",
+                background: "linear-gradient(90deg, #fbc02d, #f57f17)",
+                borderRadius: "10px",
                 marginLeft: "auto",
                 marginRight: "10px",
-                textShadow: "1px 1px 3px #0d47a1",
-                padding: "8px 16px",
+                textShadow: "1px 1px 3px rgba(0,0,0,0.3)",
+                padding: "8px 18px",
                 transition: "0.3s",
-                display: "inline-block"
+                boxShadow: "0 3px 10px rgba(251,192,45,0.4)",
               }}
-              onMouseOver={e => (e.target.style.background = "#c62828")}
-              onMouseOut={e => (e.target.style.background = "linear-gradient(90deg, #ef5350, #e53935 80%)")}
+              onMouseOver={(e) =>
+                (e.target.style.background = "linear-gradient(90deg, #f9a825, #f57f17)")
+              }
+              onMouseOut={(e) =>
+                (e.target.style.background = "linear-gradient(90deg, #fbc02d, #f57f17)")
+              }
             >
               Logout
             </Nav.Link>
@@ -92,43 +107,67 @@ const AdminMenu = () => {
         </Navbar.Collapse>
       </Navbar>
 
-      {/* Center Section (like a SaaS dashboard landing) */}
+      {/* Welcome Section */}
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
+          justifyContent: "center",
           alignItems: "center",
-          margin: "40px auto 0",
-          background: "#fff",
-          maxWidth: "640px",
-          borderRadius: "18px",
-          boxShadow: "0 6px 24px 0 rgba(25, 118, 210, 0.11)",
-          padding: "40px 34px 35px"
+          flexWrap: "wrap",
+          marginTop: "60px",
+          textAlign: "center",
+          gap: "70px",
         }}
       >
-        <img
-          src="https://media.istockphoto.com/id/2238885639/photo/artificial-intelligence-concept-with-business-analytics-big-data-visualization-and-futuristic.jpg?s=2048x2048&w=is&k=20&c=Tf0wPxiHLF8z1uuTWqC30bTilVOcc18DZR-Nrr8DSpQ="
-          alt="AI Inventory Analytics"
+        <div style={{ maxWidth: "480px", textAlign: "left" }}>
+          <h2 style={{ fontWeight: 700, color: "#141e30", marginBottom: "14px" }}>
+            Welcome, Admin
+          </h2>
+          <p
+            style={{
+              color: "#555",
+              lineHeight: "1.7",
+              fontSize: "1.05rem",
+            }}
+          >
+            Manage your <b>SmartShelfFX</b> dashboard effortlessly.
+            Monitor stock levels, predict demand, and streamline your supply chain
+            all from one intelligent, data-driven interface.
+          </p>
+        </div>
+
+        {/* Updated Image Styling */}
+        <div
           style={{
-            maxWidth: "340px",
-            width: "99%",
-            borderRadius: "15px",
-            marginBottom: "22px",
-            boxShadow: "0 2px 10px rgba(33,150,243,0.12)",
-            objectFit: "cover"
+            position: "relative",
+            borderRadius: "24px",
+            overflow: "hidden",
+            boxShadow: "0 10px 30px rgba(36,59,85,0.3)",
+            border: "3px solid rgba(36,59,85,0.15)",
+            transition: "all 0.5s ease",
+            maxWidth: "440px",
           }}
-        />
-        <p
-          style={{
-            color: "#14518c",
-            fontSize: "1.09rem",
-            marginTop: "10px",
-            marginBottom: "8px",
-            textAlign: "center",
+          onMouseOver={(e) => {
+            e.currentTarget.style.boxShadow = "0 14px 40px rgba(36,59,85,0.45)";
+            e.currentTarget.style.border = "3px solid #fbc02d";
+            e.currentTarget.style.transform = "scale(1.03)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.boxShadow = "0 10px 30px rgba(36,59,85,0.3)";
+            e.currentTarget.style.border = "3px solid rgba(36,59,85,0.15)";
+            e.currentTarget.style.transform = "scale(1)";
           }}
         >
-          Manage inventory, track SKUs &amp; products, get smart analytics, and automate restocking efficiently—all in one dashboard.
-        </p>
+          <img
+            src="https://media.istockphoto.com/id/1333702066/photo/erp-hexagonal-touch-screen-concept.jpg?s=612x612&w=0&k=20&c=s1SZKDlIZIPBYamiTwIR2t-74F53B84EpTTRNjA1nQE="
+            alt="SmartShelfFX Dashboard"
+            style={{
+              width: "100%",
+              height: "auto",
+              display: "block",
+            }}
+          />
+        </div>
       </div>
     </div>
   );
