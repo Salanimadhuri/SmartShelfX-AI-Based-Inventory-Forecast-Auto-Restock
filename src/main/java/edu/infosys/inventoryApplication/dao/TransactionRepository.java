@@ -24,7 +24,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.transactionType='issue' GROUP BY p.productId ")
     List<ProductSales> getProductWiseTotalSale();
     
-    @Query("SELECT t.transactionValue from Transaction t WHERE t.transactionType='OUT' and t.productId=?1")
+    @Query("SELECT t.transactionValue from Transaction t WHERE t.transactionType='issue' and t.productId=?1")
     List<Double> getDemandByProduct(String productId);
 
 }
