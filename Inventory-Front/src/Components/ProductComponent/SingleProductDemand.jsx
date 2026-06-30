@@ -2,312 +2,248 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Line } from "react-chartjs-2";
 import {
-  Chart as ChartJS,
-  LineElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
+  Chart as ChartJS, LineElement, CategoryScale,
+  LinearScale, PointElement, Tooltip, Legend, Filler,
 } from "chart.js";
 import { getAllProducts } from "../../Services/ProductService";
 import { getDemandByProduct } from "../../Services/TransactionService";
+import { getProductDemandInsights } from "../../Services/AIService";
+import AppShell from "../UI/AppShell";
+import { GraphUp, ExclamationCircle } from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
-// Chart.js registration
-ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
-
-// Custom styles
-const styles = {
-  bg: {
-    background: "radial-gradient(circle at 20% 40%, #e3f2fd 60%, #1976d2 120%)",
-    minHeight: "100vh",
-    padding: "2.5rem",
-    fontFamily: "'Poppins', sans-serif",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  card: {
-    width: "100%",
-    maxWidth: "820px",
-    background: "rgba(255,255,255,0.96)",
-    boxShadow: "0 6px 50px 0 rgba(25, 118, 210, 0.18)",
-    borderRadius: "18px",
-    padding: "3rem 2.2rem 2.2rem",
-    backdropFilter: "blur(3px)",
-    animation: "fadeIn 0.9s cubic-bezier(.39,.575,.565,1.000)"
-  },
-  "@keyframes fadeIn": {
-    from: { opacity: 0, transform: "scale(0.98)" },
-    to: { opacity: 1, transform: "scale(1)" }
-  },
-  title: {
-    textAlign: "center",
-    color: "#1565c0",
-    fontWeight: "bold",
-    fontSize: "2rem",
-    marginBottom: "7px",
-    letterSpacing: "2px"
-  },
-  subtitle: {
-    color: "#1976d2",
-    marginBottom: "24px",
-    fontWeight: "500"
-  },
-  formGroup: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "8px",
-    marginBottom: "26px"
-  },
-  label: {
-    fontWeight: "600",
-    color: "#1565c0",
-    fontSize: "1.07rem",
-    marginBottom: "4px"
-  },
-  select: {
-    padding: "11px 24px 11px 12px",
-    borderRadius: "10px",
-    border: "2px solid #1976d2",
-    background: "#e3f2fd",
-    fontWeight: "500",
-    color: "#1565c0",
-    boxShadow: "0 1px 4px #90caf9",
-    fontSize: "1.08rem",
-    outline: "none",
-    minWidth: "250px",
-    cursor: "pointer"
-  },
-  chartTitle: {
-    color: "#1976d2",
-    marginBottom: "14px",
-    fontWeight: "700",
-    fontSize: "1.15rem",
-    textShadow: "0 1px 3px #bbdefb"
-  },
-  infoText: {
-    color: "#455a64",
-    fontSize: "1.09rem"
-  },
-  errorText: {
-    color: "#d32f2f",
-    fontSize: "1.08rem",
-    marginBottom: "12px",
-    fontWeight: "500"
-  },
-  buttonGroup: {
-    textAlign: "center",
-    marginTop: "48px"
-  },
-  button: {
-    backgroundColor: "#388e3c",
-    border: "none",
-    padding: "12px 30px",
-    borderRadius: "10px",
-    fontWeight: "700",
-    color: "white",
-    fontSize: "1.08rem",
-    cursor: "pointer",
-    boxShadow: "0 3px 18px rgba(56,142,60,0.13)",
-    transition: "all 0.22s",
-    letterSpacing: "1px"
-  },
-  buttonHover: {
-    backgroundColor: "#1976d2"
-  },
-  skeleton: {
-    background: "linear-gradient(90deg, #e3f2fd 25%, #bbdefb 50%, #e3f2fd 75%)",
-    minHeight: "40px",
-    borderRadius: "10px",
-    marginBottom: "14px",
-    animation: "pulse 1.8s infinite"
-  },
-  "@keyframes pulse": {
-    "0%": { opacity: 0.7 },
-    "50%": { opacity: 1 },
-    "100%": { opacity: 0.7 }
-  }
-};
-
-
-// Utility for skeleton loader
-const Skeleton = ({ height = 40 }) => (
-  <div style={{ ...styles.skeleton, height: `${height}px` }} />
-);
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend, Filler);
 
 const SingleProductDemand = () => {
+  // eslint-disable-next-line no-unused-vars
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedName, setSelectedName] = useState("");
   const [demandData, setDemandData] = useState([]);
+  const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState("");
-  const [fetchingProducts, setFetchingProducts] = useState(true);
-  const navigate = useNavigate();
 
-  // Fetch product data on mount
+  const role = localStorage.getItem("loggedInRole");
+  const returnPath = role === "Manager" ? "/ManagerMenu" : "/AdminMenu";
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      setFetchingProducts(true);
-      try {
-        const response = await getAllProducts();
-        setProducts(response.data);
-      } catch (err) {
-        setError("Failed to load products");
-      } finally {
-        setFetchingProducts(false);
-      }
-    };
-    fetchProducts();
+    getAllProducts()
+      .then((r) => setProducts(r.data))
+      .catch(() => setError("Failed to load products"))
+      .finally(() => setLoadingProducts(false));
   }, []);
 
-  // On dropdown change fetch demand data
-  const handleProductChange = async (event) => {
-    const productId = event.target.value;
-    setSelectedProduct(productId);
-    setError("");
+  const handleProductChange = async (e) => {
+    const id = e.target.value;
+    const name = products.find((p) => p.productId === id)?.productName || "";
+    setSelectedProduct(id);
+    setSelectedName(name);
+    setInsights(null);
     setDemandData([]);
-
-    if (productId) {
-      setLoading(true);
-      try {
-        const response = await getDemandByProduct(productId);
-        setDemandData(response.data);
-      } catch (err) {
-        setError("Failed to load demand data");
-      } finally {
-        setLoading(false);
-      }
+    setError("");
+    if (!id) return;
+    setLoading(true);
+    try {
+      const r = await getDemandByProduct(id);
+      const data = r.data;
+      setDemandData(data);
+      setInsights(getProductDemandInsights(name, data));
+    } catch {
+      setError("Failed to load demand data for this product.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Chart data setup
   const chartData = {
     labels: demandData.map((_, i) => `T${i + 1}`),
-    datasets: [
-      {
-        label: "Product Demand (Quantity)",
-        data: demandData,
-        borderColor: "#1976d2",
-        backgroundColor: "rgba(25, 118, 210, 0.11)",
-        fill: true,
-        tension: 0.42,
-        pointRadius: 6,
-        pointBackgroundColor: "#0d47a1",
-      },
-    ],
+    datasets: [{
+      label: "Demand (Qty)",
+      data: demandData,
+      borderColor: "#1d4ed8",
+      backgroundColor: "rgba(29,78,216,0.06)",
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: "#1d4ed8",
+      borderWidth: 2,
+    }],
   };
 
-  // Chart options (for realistic UX)
   const chartOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        display: true,
-        position: "top",
-        labels: { color: "#1976d2", font: { size: 15 } }
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-        callbacks: {
-          label: (ctx) => `Qty: ${ctx.parsed.y}`,
-        }
-      }
-    },
-    elements: {
-      line: { borderWidth: 3 },
-      point: { hitRadius: 9 }
+      legend: { labels: { color: "#4b5563", font: { size: 12 } } },
+      tooltip: { callbacks: { label: (ctx) => `Qty: ${ctx.parsed.y}` } },
     },
     scales: {
-      x: {
-        ticks: { color: "#1976d2", font: { size: 14, weight: "bold" } },
-        grid: { display: false }
-      },
-      y: {
-        ticks: { color: "#1976d2", font: { size: 14, weight: "bold" } },
-        grid: { borderDash: [4,4], color: "#bbdefb" }
-      }
-    }
-  };
-  const returnBack = () => {
-  navigate("/AdminMenu");
-};
-
-
-  // Render Logic
-  const renderChartArea = () => {
-    if (loading) return <Skeleton height={320} />;
-    if (error) return <div style={styles.errorText}>{error}</div>;
-    if (demandData.length > 0) {
-      const prod = products.find((p) => p.productId === selectedProduct);
-      return (
-        <div>
-          <h4 style={styles.chartTitle}>
-            Demand Trend for {prod?.productName || "Product"}
-          </h4>
-          <Line data={chartData} options={chartOptions} />
-        </div>
-      );
-    }
-    
-    return (
-      <div style={styles.infoText}>
-        {selectedProduct ? "No demand data found for selected product." : "Select a product to view demand trend."}
-      </div>
-    );
+      x: { ticks: { color: "#9ca3af" }, grid: { display: false } },
+      y: { ticks: { color: "#9ca3af" }, grid: { color: "#f3f4f6" } },
+    },
   };
 
-  // Return button hover handler
-  const [isBtnHovered, setBtnHovered] = useState(false);
+  const trendColor = insights?.trend === "increasing" ? "#16a34a"
+    : insights?.trend === "decreasing" ? "#dc2626" : "#d97706";
 
   return (
-    <div style={styles.bg}>
-      <div style={styles.card}>
-        {/* Title */}
-        <h2 style={styles.title}>📊 Single Product Demand</h2>
-        <p style={styles.subtitle}>
-          Quickly analyze demand trends for your products below.
-        </p>
-
-        {/* Product Dropdown */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Select Product</label>
-          {fetchingProducts ?
-            <Skeleton height={45} /> :
-            <select
-              style={styles.select}
-              value={selectedProduct}
-              onChange={handleProductChange}
-            >
-              <option value="">-- Choose a Product --</option>
-              {products.map((p, i) => (
-                <option key={i} value={p.productId}>{p.productName}</option>
-              ))}
-            </select>
-          }
-        </div>
-
-        {/* Chart Area */}
-        {renderChartArea()}
-
-        {/* Return Button */}
-        <div style={styles.buttonGroup}>
-          <button
-            style={{
-              ...styles.button,
-              ...(isBtnHovered ? styles.buttonHover : {})
-            }}
-            onMouseEnter={() => setBtnHovered(true)}
-            onMouseLeave={() => setBtnHovered(false)}
-            onClick={returnBack}
-          >
-             Return
-          </button>
+    <AppShell
+      role={role || "Admin"}
+      breadcrumb={[{ label: "Dashboard", href: returnPath }, { label: "Demand Forecast" }]}
+    >
+      <div className="ent-page-header">
+        <div>
+          <h2 className="ent-page-title">Demand Forecast</h2>
+          <p className="ent-page-subtitle">Analyze per-product demand trends and restock recommendations</p>
         </div>
       </div>
-    </div>
+
+      {/* Product selector */}
+      <div className="ent-card" style={{ padding: "16px 20px", marginBottom: 20 }}>
+        <div className="ent-field" style={{ marginBottom: 0 }}>
+          <label className="ent-label" htmlFor="product-select">Select product to analyze</label>
+          {loadingProducts ? (
+            <div className="ent-skeleton" style={{ height: 36 }} />
+          ) : (
+            <select id="product-select" value={selectedProduct} onChange={handleProductChange}
+              className="ent-input" style={{ maxWidth: 360 }}>
+              <option value="">Choose a product…</option>
+              {products.map((p) => (
+                <option key={p.productId} value={p.productId}>{p.productName}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="ent-alert ent-alert-error">
+          <ExclamationCircle size={15} /> {error}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ textAlign: "center", padding: "48px 0" }}>
+          <div className="ent-spinner" style={{ margin: "0 auto 12px" }} />
+          <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Analyzing demand data…</p>
+        </div>
+      )}
+
+      {!loading && !selectedProduct && !error && (
+        <div className="ent-card">
+          <div className="ent-empty">
+            <GraphUp size={32} style={{ color: "#d1d5db", marginBottom: 10 }} />
+            <div className="ent-empty-title">Select a product</div>
+            <div className="ent-empty-text">Choose a product above to see demand insights and forecasts.</div>
+          </div>
+        </div>
+      )}
+
+      {!loading && insights && (
+        <>
+          {/* Metrics */}
+          <div className="ent-grid-3" style={{ marginBottom: 20 }}>
+            {[
+              {
+                label: "Demand Trend",
+                value: `${insights.trend === "increasing" ? "▲" : insights.trend === "decreasing" ? "▼" : "►"} ${insights.trendPct}%`,
+                sub: insights.trend,
+                color: trendColor,
+              },
+              {
+                label: "Next Period Forecast",
+                value: `${insights.forecastNext} units`,
+                sub: "AI linear projection",
+                color: "#1d4ed8",
+              },
+              {
+                label: "7-Day Forecast",
+                value: `${insights.forecastWeek} units`,
+                sub: "Projected weekly demand",
+                color: "#1d4ed8",
+              },
+              {
+                label: "Avg Demand",
+                value: `${insights.avg} units`,
+                sub: `Range: ${insights.min}–${insights.max}`,
+                color: "#374151",
+              },
+              {
+                label: "Stock Coverage",
+                value: `~${insights.daysOfStock} days`,
+                sub: insights.daysOfStock < 7 ? "Restock soon!" : "Adequate",
+                color: insights.daysOfStock < 7 ? "#dc2626" : "#16a34a",
+              },
+              {
+                label: "Demand Volatility",
+                value: `${insights.volatility}%`,
+                sub: insights.isVolatile ? "High — buffer stock recommended" : "Low — predictable",
+                color: insights.isVolatile ? "#d97706" : "#16a34a",
+              },
+            ].map((m, i) => (
+              <div key={i} className="ent-stat-card" style={{ padding: "16px" }}>
+                <div style={{ fontSize: "1.125rem", fontWeight: 700, color: m.color, marginBottom: 4 }}>{m.value}</div>
+                <div style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#111827", marginBottom: 2 }}>{m.label}</div>
+                <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{m.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Recommendation */}
+          <div style={{ marginBottom: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{
+              padding: "14px 16px", borderRadius: 10,
+              background: insights.daysOfStock < 7 ? "#fef2f2" : "#f0fdf4",
+              border: `1px solid ${insights.daysOfStock < 7 ? "#fecaca" : "#bbf7d0"}`,
+            }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: insights.daysOfStock < 7 ? "#dc2626" : "#16a34a", marginBottom: 5 }}>
+                Restock Recommendation
+              </div>
+              <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0, lineHeight: 1.55 }}>
+                {insights.daysOfStock < 7
+                  ? `Restock "${insights.productName}" within ${insights.daysOfStock} days — demand rate is high.`
+                  : `"${insights.productName}" has ~${insights.daysOfStock} days of coverage. Monitor and reorder as needed.`}
+              </p>
+            </div>
+            <div style={{
+              padding: "14px 16px", borderRadius: 10,
+              background: "#eff6ff", border: "1px solid #bfdbfe",
+            }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#1d4ed8", marginBottom: 5 }}>Monthly Projection</div>
+              <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0, lineHeight: 1.55 }}>
+                Estimated 30-day demand: ~{Math.round(insights.forecastWeek * 4.3)} units.{" "}
+                {insights.trend === "increasing" ? "Plan for higher procurement."
+                  : insights.trend === "decreasing" ? "Consider reducing order quantities."
+                  : "Maintain current procurement cadence."}
+              </p>
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div className="ent-card" style={{ padding: "20px" }}>
+            <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+              Historical Demand — {selectedName}
+            </h3>
+            {demandData.length > 0 ? (
+              <Line data={chartData} options={chartOptions} />
+            ) : (
+              <p style={{ color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No historical data available.</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {!loading && selectedProduct && demandData.length === 0 && !error && (
+        <div className="ent-card">
+          <div className="ent-empty">
+            <div className="ent-empty-title">No demand data</div>
+            <div className="ent-empty-text">No transactions found for <strong>{selectedName}</strong>. Make some transactions first.</div>
+          </div>
+        </div>
+      )}
+    </AppShell>
   );
 };
 

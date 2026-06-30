@@ -1,176 +1,300 @@
-import React from "react";
-import Nav from "react-bootstrap/Nav";
-import Navbar from "react-bootstrap/Navbar";
-import NavDropdown from "react-bootstrap/NavDropdown";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import AppShell from "../UI/AppShell";
+import { getAllProducts } from "../../Services/ProductService";
+import { getAllTransactions } from "../../Services/TransactionService";
+import { getPOSummary } from "../../Services/PurchaseOrderService";
+import { getExpirySummary } from "../../Services/BatchService";
+import { getInventoryInsights, getTransactionInsights } from "../../Services/AIService";
+import {
+  BoxSeam, ExclamationTriangle, CurrencyDollar, Activity,
+  ArrowUpRight, ArrowDownRight, FileEarmarkArrowDown, CalendarEvent,
+} from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
-const AdminMenu = () => {
-  return (
-    <div
-      className="container-fluid"
-      style={{
-        background: "linear-gradient(135deg, #f3f5ff 0%, #e8edff 100%)",
-        minHeight: "100vh",
-        fontFamily: "'Poppins', sans-serif",
-      }}
-    >
-      {/* Header Section */}
-      <div
-        align="center"
-        style={{
-          background: "linear-gradient(90deg, #243b55 0%, #141e30 100%)",
-          padding: "28px 0",
-          color: "#fdd835",
-          fontWeight: 800,
-          fontSize: "2.5rem",
-          letterSpacing: "1.5px",
-          textShadow: "2px 2px 10px rgba(0,0,0,0.4)",
-          borderBottom: "3px solid #fbc02d",
-          boxShadow: "0 4px 20px rgba(36,59,85,0.4)",
-        }}
-      >
-        SmartShelf<span style={{ color: "#ffffff" }}>FX</span>
+const KPICard = ({ icon, label, value, sub, trend, trendUp, delay = 0 }) => (
+  <div className="ent-stat-card ent-fade-up" style={{ animationDelay: `${delay}s` }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 8, background: "#eff6ff",
+        display: "flex", alignItems: "center", justifyContent: "center", color: "#1d4ed8",
+      }}>
+        {icon}
       </div>
+      {trend !== undefined && (
+        <span style={{
+          display: "flex", alignItems: "center", gap: 3, fontSize: "0.75rem", fontWeight: 500,
+          color: trendUp ? "#16a34a" : "#dc2626",
+        }}>
+          {trendUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+          {trend}
+        </span>
+      )}
+    </div>
+    <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#111827", lineHeight: 1, marginBottom: 4 }}>{value}</div>
+    <div style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#4b5563", marginBottom: 2 }}>{label}</div>
+    {sub && <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{sub}</div>}
+  </div>
+);
 
-      {/* Navigation Bar */}
-      <Navbar
-        expand="lg"
-        style={{
-          background: "#ffffff",
-          borderRadius: "14px",
-          margin: "30px auto",
-          boxShadow: "0 4px 25px rgba(0,0,0,0.08)",
-          maxWidth: "88%",
-          padding: "12px 24px",
-        }}
-      >
-        <Navbar.Collapse id="basic-navbar-nav">
-          <Nav style={{ fontWeight: "500", width: "100%", fontSize: "1rem" }}>
-            <NavDropdown title="SKU" id="sku-nav-dropdown">
-              <NavDropdown.Item href="/SkuRepo?from=admin">SKU List</NavDropdown.Item>
-              <NavDropdown.Item href="/SkuAdd">SKU Addition</NavDropdown.Item>
-            </NavDropdown>
-
-            <NavDropdown title="Product" id="product-nav-dropdown">
-              <NavDropdown.Item href="/AdProdRepo">Product List</NavDropdown.Item>
-              <NavDropdown.Item href="/ProductAdd">Product Addition</NavDropdown.Item>
-              <NavDropdown title="Product Analysis" id="product-analysis-dropdown" drop="end">
-                <NavDropdown.Item href="/AllProductAnalysis">All Product Sales</NavDropdown.Item>
-                <NavDropdown.Item href="/SingleProductDemand">Single Product Demand</NavDropdown.Item>
-              </NavDropdown>
-            </NavDropdown>
-
-            <NavDropdown title="Transaction" id="transaction-nav-dropdown">
-              <NavDropdown.Item href="/Transactions?type=issue">Issued History</NavDropdown.Item>
-              <NavDropdown.Item href="/Transactions?type=purchase">Purchase History</NavDropdown.Item>
-              <NavDropdown.Item href="/Transactions">Transaction History</NavDropdown.Item>
-            </NavDropdown>
-
-            <Nav.Link
-              href="/ShowSingleUser"
-              style={{
-                color: "#283593",
-                fontWeight: 600,
-                marginLeft: "10px",
-                marginRight: "auto",
-                transition: "all 0.3s ease",
-              }}
-              onMouseOver={(e) => (e.target.style.color = "#1a237e")}
-              onMouseOut={(e) => (e.target.style.color = "#283593")}
-            >
-              Show User Details
-            </Nav.Link>
-
-            <Nav.Link
-              href="/"
-              style={{
-                color: "#fff",
-                fontWeight: 600,
-                background: "linear-gradient(90deg, #fbc02d, #f57f17)",
-                borderRadius: "10px",
-                marginLeft: "auto",
-                marginRight: "10px",
-                textShadow: "1px 1px 3px rgba(0,0,0,0.3)",
-                padding: "8px 18px",
-                transition: "0.3s",
-                boxShadow: "0 3px 10px rgba(251,192,45,0.4)",
-              }}
-              onMouseOver={(e) =>
-                (e.target.style.background = "linear-gradient(90deg, #f9a825, #f57f17)")
-              }
-              onMouseOut={(e) =>
-                (e.target.style.background = "linear-gradient(90deg, #fbc02d, #f57f17)")
-              }
-            >
-              Logout
-            </Nav.Link>
-          </Nav>
-        </Navbar.Collapse>
-      </Navbar>
-
-      {/* Welcome Section */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          flexWrap: "wrap",
-          marginTop: "60px",
-          textAlign: "center",
-          gap: "70px",
-        }}
-      >
-        <div style={{ maxWidth: "480px", textAlign: "left" }}>
-          <h2 style={{ fontWeight: 700, color: "#141e30", marginBottom: "14px" }}>
-            Welcome, Admin
-          </h2>
-          <p
-            style={{
-              color: "#555",
-              lineHeight: "1.7",
-              fontSize: "1.05rem",
-            }}
-          >
-            Manage your <b>SmartShelfFX</b> dashboard effortlessly.
-            Monitor stock levels, predict demand, and streamline your supply chain
-            all from one intelligent, data-driven interface.
-          </p>
-        </div>
-
-        {/* Updated Image Styling */}
-        <div
-          style={{
-            position: "relative",
-            borderRadius: "24px",
-            overflow: "hidden",
-            boxShadow: "0 10px 30px rgba(36,59,85,0.3)",
-            border: "3px solid rgba(36,59,85,0.15)",
-            transition: "all 0.5s ease",
-            maxWidth: "440px",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.boxShadow = "0 14px 40px rgba(36,59,85,0.45)";
-            e.currentTarget.style.border = "3px solid #fbc02d";
-            e.currentTarget.style.transform = "scale(1.03)";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.boxShadow = "0 10px 30px rgba(36,59,85,0.3)";
-            e.currentTarget.style.border = "3px solid rgba(36,59,85,0.15)";
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          <img
-            src="https://media.istockphoto.com/id/1333702066/photo/erp-hexagonal-touch-screen-concept.jpg?s=612x612&w=0&k=20&c=s1SZKDlIZIPBYamiTwIR2t-74F53B84EpTTRNjA1nQE="
-            alt="SmartShelfFX Dashboard"
-            style={{
-              width: "100%",
-              height: "auto",
-              display: "block",
-            }}
-          />
-        </div>
+const StatusBar = ({ label, count, total, color }) => {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+        <span style={{ fontSize: "0.8125rem", color: "#4b5563" }}>{label}</span>
+        <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#111827" }}>{count} <span style={{ color: "#9ca3af", fontWeight: 400 }}>({pct}%)</span></span>
+      </div>
+      <div style={{ height: 6, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 999, transition: "width 0.6s ease" }} />
       </div>
     </div>
   );
 };
 
-export default AdminMenu;
+export default function AdminMenu() {
+  const navigate = useNavigate();
+  const [products, setProducts] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [inv, setInv] = useState(null);
+  const [txn, setTxn] = useState(null);
+  const [poSummary, setPoSummary] = useState(null);
+  const [expiry, setExpiry] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      getAllProducts(), getAllTransactions(),
+      getPOSummary().catch(() => null),
+      getExpirySummary().catch(() => null),
+    ])
+      .then(([p, t, po, ex]) => {
+        setProducts(p.data);
+        setTransactions(t.data);
+        setInv(getInventoryInsights(p.data));
+        setTxn(getTransactionInsights(t.data));
+        if (po) setPoSummary(po.data);
+        if (ex) setExpiry(ex.data);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const storedUser = localStorage.getItem("loggedInUser");
+  const username = storedUser ? JSON.parse(storedUser).username : "Admin";
+
+  const recentTxns = [...transactions].reverse().slice(0, 5);
+
+  return (
+    <AppShell role="Admin" breadcrumb={[{ label: "Dashboard" }]}>
+      {/* Welcome */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+          Good day, {username}
+        </h1>
+        <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+          Here's an overview of your inventory operations.
+        </p>
+      </div>
+
+      {/* KPI row */}
+      {loading ? (
+        <div className="ent-grid-4" style={{ marginBottom: 24 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="ent-skeleton" style={{ height: 104 }} />
+          ))}
+        </div>
+      ) : (
+        <div className="ent-grid-4" style={{ marginBottom: 24 }}>
+          <KPICard
+            icon={<BoxSeam size={18} />}
+            label="Total Products"
+            value={products.length}
+            sub="In inventory"
+            delay={0}
+          />
+          <KPICard
+            icon={<CurrencyDollar size={18} />}
+            label="Total Revenue"
+            value={txn ? `₹${parseFloat(txn.totalRevenue).toLocaleString()}` : "—"}
+            sub={txn ? `${txn.profitMargin}% margin` : ""}
+            trend={txn ? `${txn.profitMargin}%` : undefined}
+            trendUp={txn && parseFloat(txn.profitMargin) > 0}
+            delay={0.05}
+          />
+          <KPICard
+            icon={<ExclamationTriangle size={18} />}
+            label="Low Stock Alerts"
+            value={inv?.lowStockCount ?? 0}
+            sub={inv?.criticalCount > 0 ? `${inv.criticalCount} critical` : "All clear"}
+            delay={0.1}
+          />
+          <KPICard
+            icon={<Activity size={18} />}
+            label="Inventory Health"
+            value={inv ? `${inv.healthScore}%` : "—"}
+            sub={inv ? `${inv.healthyCount} products healthy` : ""}
+            trend={inv ? `${inv.healthScore}%` : undefined}
+            trendUp={inv && inv.healthScore >= 60}
+            delay={0.15}
+          />
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, marginBottom: 24 }}>
+        {/* Inventory status */}
+        <div className="ent-card" style={{ padding: "20px 20px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#111827" }}>Inventory Status</h3>
+            <button className="ent-btn ent-btn-ghost ent-btn-sm" onClick={() => navigate("/AdProdRepo")}>
+              View all
+            </button>
+          </div>
+          {loading ? (
+            <div>
+              {[...Array(3)].map((_, i) => <div key={i} className="ent-skeleton" style={{ height: 28, marginBottom: 12 }} />)}
+            </div>
+          ) : inv ? (
+            <div>
+              <StatusBar label="Healthy" count={inv.healthyCount} total={inv.totalProducts} color="#16a34a" />
+              <StatusBar label="Low Stock" count={inv.lowStockCount} total={inv.totalProducts} color="#d97706" />
+              <StatusBar label="Critical" count={inv.criticalCount} total={inv.totalProducts} color="#dc2626" />
+            </div>
+          ) : null}
+        </div>
+
+        {/* Quick actions */}
+        <div className="ent-card" style={{ padding: "20px" }}>
+          <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#111827", marginBottom: 14 }}>Quick Actions</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              { label: "View Products",    href: "/AdProdRepo" },
+              { label: "Add Product",      href: "/ProductAdd" },
+              { label: "Add SKU",          href: "/SkuAdd" },
+              { label: "Sales Analysis",   href: "/AllProductAnalysis" },
+              { label: "Demand Forecast",  href: "/SingleProductDemand" },
+              { label: "All Transactions", href: "/Transactions" },
+            ].map((a) => (
+              <a key={a.href} href={a.href}
+                className="ent-btn ent-btn-secondary"
+                style={{ textDecoration: "none", justifyContent: "flex-start", textAlign: "left" }}>
+                {a.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* PO + Expiry widgets */}
+      {(poSummary || expiry) && (
+        <div className="ent-grid-2" style={{ marginBottom: 24 }}>
+          {poSummary && (
+            <div className="ent-card" style={{ padding: "20px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <FileEarmarkArrowDown size={16} color="#1d4ed8" />
+                  <h3 style={{ margin:0, fontSize:"0.9375rem", fontWeight:600, color:"#111827" }}>Purchase Orders</h3>
+                </div>
+                <a href="/PurchaseOrders" style={{ fontSize:"0.8125rem", color:"#1d4ed8", textDecoration:"none" }}>View all</a>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+                {[
+                  { label:"Open",     value:poSummary.openOrders,       cls:"ent-badge-blue"   },
+                  { label:"Pending",  value:poSummary.pendingDeliveries, cls:"ent-badge-yellow" },
+                  { label:"Received", value:poSummary.receivedOrders,   cls:"ent-badge-green"  },
+                ].map(c => (
+                  <div key={c.label} style={{ textAlign:"center", padding:"10px 8px", background:"#f9fafb", borderRadius:8, border:"1px solid #e5e7eb" }}>
+                    <span className={`ent-badge ${c.cls}`} style={{ marginBottom:4 }}>{c.value}</span>
+                    <div style={{ fontSize:"0.75rem", color:"#6b7280", marginTop:4 }}>{c.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {expiry && (
+            <div className="ent-card" style={{ padding: "20px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <CalendarEvent size={16} color={expiry.expiredCount > 0 || expiry.within7Count > 0 ? "#dc2626" : "#1d4ed8"} />
+                  <h3 style={{ margin:0, fontSize:"0.9375rem", fontWeight:600, color:"#111827" }}>Batch Expiry</h3>
+                </div>
+                <a href="/Batches" style={{ fontSize:"0.8125rem", color:"#1d4ed8", textDecoration:"none" }}>View all</a>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+                {[
+                  { label:"Expired",    value:expiry.expiredCount,   cls: expiry.expiredCount > 0  ? "ent-badge-red"    : "ent-badge-gray" },
+                  { label:"Within 7d",  value:expiry.within7Count,   cls: expiry.within7Count > 0  ? "ent-badge-red"    : "ent-badge-gray" },
+                  { label:"Within 30d", value:expiry.within30Count,  cls: expiry.within30Count > 0 ? "ent-badge-yellow" : "ent-badge-gray" },
+                ].map(c => (
+                  <div key={c.label} style={{ textAlign:"center", padding:"10px 8px", background:"#f9fafb", borderRadius:8, border:"1px solid #e5e7eb" }}>
+                    <span className={`ent-badge ${c.cls}`} style={{ marginBottom:4 }}>{c.value}</span>
+                    <div style={{ fontSize:"0.75rem", color:"#6b7280", marginTop:4 }}>{c.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recent transactions */}
+      <div className="ent-table-wrap">
+        <div className="ent-table-toolbar" style={{ justifyContent: "space-between" }}>
+          <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#111827" }}>Recent Transactions</span>
+          <button className="ent-btn ent-btn-ghost ent-btn-sm" onClick={() => navigate("/Transactions")}>
+            View all
+          </button>
+        </div>
+        {loading ? (
+          <div style={{ padding: 20 }}>
+            {[...Array(4)].map((_, i) => <div key={i} className="ent-skeleton" style={{ height: 36, marginBottom: 8 }} />)}
+          </div>
+        ) : (
+          <div className="ent-table-scroll">
+            <table className="ent-table">
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Product ID</th>
+                  <th>Type</th>
+                  <th>Quantity</th>
+                  <th>Value</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTxns.length === 0 ? (
+                  <tr><td colSpan={6} style={{ textAlign: "center", color: "#9ca3af", padding: 32 }}>No transactions yet</td></tr>
+                ) : recentTxns.map((t) => (
+                  <tr key={t.transactionId}>
+                    <td className="primary">{t.transactionId}</td>
+                    <td>{t.productId}</td>
+                    <td>
+                      <span className={`ent-badge ${t.transactionType === "issue" ? "ent-badge-yellow" : "ent-badge-green"}`}>
+                        {t.transactionType === "issue" ? "OUT" : "IN"}
+                      </span>
+                    </td>
+                    <td>{t.quantity}</td>
+                    <td className="primary">₹{t.transactionValue}</td>
+                    <td>{new Date(t.transactionDate).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Low stock alerts */}
+      {!loading && inv && inv.criticalItems.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div className="ent-alert ent-alert-error">
+            <ExclamationTriangle size={15} />
+            <span><strong>{inv.criticalItems.length} critical items</strong> need immediate restocking: </span>
+            <span>{inv.criticalItems.map(p => p.productName).join(", ")}</span>
+          </div>
+        </div>
+      )}
+    </AppShell>
+  );
+}

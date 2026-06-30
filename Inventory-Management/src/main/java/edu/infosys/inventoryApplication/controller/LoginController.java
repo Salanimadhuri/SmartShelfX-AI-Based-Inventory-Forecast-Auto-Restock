@@ -23,7 +23,6 @@ import edu.infosys.inventoryApplication.service.InventoryUserService;
 
 @RestController
 @RequestMapping("/inventory/")
-@CrossOrigin(origins = "http://localhost:3838")
 public class LoginController {
 
     private final InventoryApplication inventoryApplication;
@@ -42,7 +41,7 @@ public class LoginController {
 	
 	@PostMapping("/login")
 	public void registerNewUser(@RequestBody InventoryUser user ) {
-		PasswordEncoder bCrypt=econfig.passwordEcoder();
+		PasswordEncoder bCrypt=econfig.passwordEncoder();
 		String encodedPassword=bCrypt.encode(user.getPassword());
 		user.setPassword(encodedPassword);
 		service.save(user);

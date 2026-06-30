@@ -1,7 +1,7 @@
 import axios from "axios";
-
-const BASE_URL = "http://localhost:9898/inventory";
-const ANA_URL = "http://localhost:9898/inventory/analysis";
+import API_BASE from "./config";
+const BASE_URL = `${API_BASE}/inventory`;
+const ANA_URL  = `${API_BASE}/inventory/analysis`;
 
 export const getAllTransactions = () => axios.get(`${BASE_URL}/transaction`);
 

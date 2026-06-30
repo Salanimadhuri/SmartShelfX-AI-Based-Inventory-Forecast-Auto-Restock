@@ -18,7 +18,6 @@ import edu.infosys.inventoryApplication.dao.SKUDao;
 
 @RestController
 @RequestMapping("/inventory/")
-@CrossOrigin(origins = "http://localhost:3838")
 public class SKUController {
 	@Autowired
 	private SKUDao skuDao;

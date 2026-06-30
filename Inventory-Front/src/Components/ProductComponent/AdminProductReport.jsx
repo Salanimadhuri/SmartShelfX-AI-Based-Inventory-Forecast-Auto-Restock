@@ -1,275 +1,280 @@
-import React, { useEffect, useState, useCallback } from "react";
-// Import useLocation to read the state passed during navigation
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getAllProducts, deleteProduct } from "../../Services/ProductService";
 import { getAllTransactions } from "../../Services/TransactionService";
+import { getInventoryInsights } from "../../Services/AIService";
+import {
+  Search, PlusCircle, Eye, ArrowUpCircle, ArrowDownCircle,
+  PencilSquare, Trash, ExclamationTriangle, CheckCircle,
+} from "react-bootstrap-icons";
+import AppShell from "../UI/AppShell";
+import "../UI/EnterpriseStyles.css";
 
-const styles = {
-  // ... (Your existing styles object)
-  container: {
-    fontFamily: 'Segoe UI, Arial, sans-serif',
-    padding: '20px',
-    maxWidth: '1300px',
-    margin: 'auto',
-    borderRadius: '10px',
-  },
-  title: {
-    textAlign: 'center',
-    color: '#007bff',
-    marginBottom: '20px',
-    fontSize: '2em',
-    fontWeight: '700',
-    textDecoration: 'underline',
-    textUnderlineOffset: '6px',
-    textDecorationColor: '#007bff',
-  },
-  table: {
-  width: '100%',
-  borderCollapse: 'collapse',
-  tableLayout: 'auto', // Allow columns to adjust automatically
-  minWidth: '0',        // Remove forced min width
-},
-tableWrapper: {
-  borderRadius: '8px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  overflowX: 'auto',   // Keep in case table is wider than container
-},
+const PAGE_SIZE = 10;
 
-  tableHeader: {
-    padding: '10px 12px',
-    textAlign: 'left',
-    backgroundColor: '#343a40',
-    color: '#fff',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  tableCell: {
-    padding: '10px 12px',
-    textAlign: 'left',
-    borderBottom: '1px solid #dee2e6',
-    fontSize: '0.9em',
-    color: '#495057',
-    whiteSpace: 'nowrap',
-  },
-  actionsCell: {
-    whiteSpace: 'nowrap',
-  },
-  actionButton: {
-    padding: '5px 10px',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.85em',
-    fontWeight: 'bold',
-    marginRight: '5px',
-    color: '#fff',
-    transition: 'background-color 0.2s, transform 0.1s',
-  },
-  viewButton: { backgroundColor: '#17a2b8' },
-  issueButton: { backgroundColor: '#ffc107', color: '#000' },
-  purchaseButton: { backgroundColor: '#28a745' },
-  priceUpdateButton: { backgroundColor: '#007bff' },
-  deleteButton: { backgroundColor: '#dc3545' },
-  returnButtonContainer: {
-    marginTop: '20px',
-    textAlign: 'center',
-  },
-  returnButton: {
-    backgroundColor: '#17a2b8',
-    color: 'white',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '1em',
-    fontWeight: 'bold',
-    transition: 'background-color 0.2s, transform 0.1s',
-  },
-  transactionSection: {
-    marginTop: "30px",
-    padding: "20px",
-    borderRadius: "8px",
-    backgroundColor: "#eaf4ff",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  },
-  transactionTitle: {
-    color: "#007bff",
-    textAlign: "center",
-    fontWeight: "bold",
-    marginBottom: "15px",
-  },
-  lowStockRow: {
-    backgroundColor: '#fff3f3',
-  },
+const StatusBadge = ({ stock, reorderLevel }) => {
+  if (stock === 0)                          return <span className="ent-badge ent-badge-red">Critical</span>;
+  if (stock < reorderLevel * 0.5)           return <span className="ent-badge ent-badge-red">Critical</span>;
+  if (stock <= reorderLevel)                return <span className="ent-badge ent-badge-yellow">Low Stock</span>;
+  return <span className="ent-badge ent-badge-green">In Stock</span>;
 };
 
 const AdminProductReport = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Get location object
+  const location = useLocation();
 
   const [products, setProducts] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [transactions, setTransactions] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [showTransactionValue, setShowTransactionValue] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+  const [aiInsights, setAiInsights] = useState(null);
+  const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [page, setPage] = useState(1);
 
-
-  // Wrap data loading functions in useCallback to prevent re-creation
   const loadProducts = useCallback(async () => {
     try {
-      const response = await getAllProducts();
-      setProducts(response.data);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []); // Empty dependency array, this function is stable
+      const res = await getAllProducts();
+      setProducts(res.data);
+      setAiInsights(getInventoryInsights(res.data));
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, []);
 
   const loadTransactions = useCallback(async () => {
     try {
-      const response = await getAllTransactions();
-      setTransactions(response.data);
-      setShowTransactionValue(true); // Show transactions when loaded
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-    }
-  }, []); // Empty dependency array, this function is stable
+      const res = await getAllTransactions();
+      setTransactions(res.data);
+      setShowTransactionValue(true);
+    } catch (e) { console.error(e); }
+  }, []);
 
-  // This effect runs when the component loads
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  useEffect(() => { loadProducts(); }, [loadProducts]);
 
-  // This effect runs when we return to this page with a message
   useEffect(() => {
     if (location.state?.message) {
-      // A success message was passed, so reload transactions
+      setSuccessMsg(location.state.message);
       loadTransactions();
-      
-      // Clear the location state so the message doesn't re-appear on refresh
       navigate(location.pathname, { replace: true, state: {} });
+      setTimeout(() => setSuccessMsg(""), 4000);
     }
-  }, [location.state?.message, loadTransactions, navigate]);
+  }, [location.state?.message, loadTransactions, navigate, location.pathname]);
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        await deleteProduct(id);
-        setProducts(products.filter((p) => p.productId !== id));
-      } catch (error) {
-        console.error("Error deleting product:", error);
-      }
-    }
+    if (!window.confirm("Delete this product? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      await deleteProduct(id);
+      const updated = products.filter(x => x.productId !== id);
+      setProducts(updated);
+      setAiInsights(getInventoryInsights(updated));
+    } catch (e) { console.error(e); }
+    finally { setDeletingId(null); }
   };
 
-  // Updated function: Just navigate.
-  const handleIssue = (id) => {
-    navigate(`/issue-product/${id}`);
-  };
+  const filtered = useMemo(() =>
+    products.filter(p =>
+      p.productName?.toLowerCase().includes(search.toLowerCase()) ||
+      p.productId?.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(search.toLowerCase())
+    ), [products, search]);
 
-  // Updated function: Just navigate.
-  const handlePurchase = (id) => {
-    navigate(`/purchase-product/${id}`);
-  };
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handlePriceUpdate = (id) => navigate(`/update-price/${id}`);
-
-  if (loading) return <div>Loading products...</div>;
+  const handleSearch = (val) => { setSearch(val); setPage(1); };
 
   return (
-    <div style={styles.container}>
-      <h2 style={styles.title}>Product List</h2>
-
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.tableHeader}>ID</th>
-              <th style={styles.tableHeader}>Name</th>
-              <th style={styles.tableHeader}>SKU</th>
-              <th style={styles.tableHeader}>Purchase Price</th>
-              <th style={styles.tableHeader}>Stock</th>
-              <th style={styles.tableHeader}>Reorder Level</th>
-              <th style={styles.tableHeader}>Vendor ID</th>
-              <th  style={styles.tableHeader}>Stock Status</th>
-              <th style={styles.tableHeader}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.productId} >
-                <td style={styles.tableCell}>{p.productId}</td>
-                <td style={styles.tableCell}>{p.productName}</td>
-                <td style={styles.tableCell}>{p.sku}</td>
-                <td style={styles.tableCell}>{p.purchasePrice}</td>
-                <td style={styles.tableCell}>{p.stock}</td>
-                <td style={styles.tableCell}>{p.reorderLevel}</td>
-                <td style={styles.tableCell}>{p.vendorId}</td>
-                                 <td style={styles.tableCell}>
-                    {p.stock > p.reorderLevel ? (
-                      <span style={{ color: "green", fontWeight: "bold" }}>Permitted to Issue</span>
-                    ) : (
-                      <span style={{ color: "red", fontWeight: "bold" }}>Reorder Level Reached</span>
-                    )}
-                  </td>
-
-                <td style={{ ...styles.tableCell, ...styles.actionsCell }}>
-                  <button
-                    style={{ ...styles.actionButton, ...styles.viewButton }}
-                    onClick={() => navigate(`/view-product/${p.productId}`)}
-                  >
-                    View
-                  </button>
-                  <button
-                    style={{ ...styles.actionButton, ...styles.issueButton }}
-                    onClick={() => handleIssue(p.productId)}
-                  >
-                    Issue
-                  </button>
-                  <button
-                    style={{ ...styles.actionButton, ...styles.purchaseButton }}
-                    onClick={() => handlePurchase(p.productId)}
-                  >
-                    Purchase
-                  </button>
-                  <button
-                    style={{ ...styles.actionButton, ...styles.priceUpdateButton }}
-                    onClick={() => handlePriceUpdate(p.productId)}
-                  >
-                    Update Price
-                  </button>
-                  <button
-                    style={{ ...styles.actionButton, ...styles.deleteButton }}
-                    onClick={() => handleDelete(p.productId)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <AppShell role="Admin" breadcrumb={[{ label: "Dashboard", href: "/AdminMenu" }, { label: "Products" }]}>
+      {/* Page header */}
+      <div className="ent-page-header">
+        <div>
+          <h2 className="ent-page-title">Product Inventory</h2>
+          <p className="ent-page-subtitle">
+            {products.length} products · {aiInsights?.lowStockCount ?? 0} low stock
+          </p>
+        </div>
+        <button className="ent-btn ent-btn-primary" onClick={() => navigate("/ProductAdd")}>
+          <PlusCircle size={15} /> Add Product
+        </button>
       </div>
 
-     
+      {/* Success / alert messages */}
+      {successMsg && (
+        <div className="ent-alert ent-alert-success">
+          <CheckCircle size={15} /> {successMsg}
+        </div>
+      )}
+      {!loading && aiInsights?.criticalCount > 0 && (
+        <div className="ent-alert ent-alert-error">
+          <ExclamationTriangle size={15} />
+          <strong>{aiInsights.criticalCount} critical items</strong>:&nbsp;
+          {aiInsights.criticalItems.slice(0, 3).map(p => p.productName).join(", ")}
+          {aiInsights.criticalItems.length > 3 && ` +${aiInsights.criticalItems.length - 3} more`}
+        </div>
+      )}
 
-      <div style={styles.returnButtonContainer}>
-        {/* "Clear Message" button appears only if there is a message */}
-       
-       <button
-          style={styles.returnButton}
-          onClick={() => {
-            // Just navigate. Remove the lines for setMessage
-            // and setShowTransactionValue.
-            navigate("/AdminMenu");
-          }}
-        >
-          Return
-        </button>
+      {/* Summary stat strip */}
+      {!loading && aiInsights && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+          {[
+            { label: "Healthy",  value: aiInsights.healthyCount,  cls: "ent-badge-green" },
+            { label: "Low Stock",value: aiInsights.lowStockCount, cls: "ent-badge-yellow" },
+            { label: "Critical", value: aiInsights.criticalCount, cls: "ent-badge-red" },
+            { label: `Health ${aiInsights.healthScore}%`, value: "", cls: "ent-badge-blue" },
+          ].map((s) => (
+            <div key={s.label} style={{
+              background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
+              padding: "8px 14px", display: "flex", alignItems: "center", gap: 8,
+              fontSize: "0.8125rem",
+            }}>
+              <span className={`ent-badge ${s.cls}`}>{s.value || s.label}</span>
+              {s.value !== "" && <span style={{ color: "#4b5563" }}>{s.label}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="ent-table-wrap">
+        <div className="ent-table-toolbar">
+          <div className="ent-search-wrap">
+            <span className="ent-search-icon"><Search size={14} /></span>
+            <input
+              className="ent-search"
+              placeholder="Search by name, ID, or SKU…"
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+          </div>
+          <span style={{ fontSize: "0.8125rem", color: "#9ca3af", whiteSpace: "nowrap" }}>
+            {filtered.length} of {products.length}
+          </span>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 48, textAlign: "center" }}>
+            <div className="ent-spinner" style={{ margin: "0 auto 12px" }} />
+            <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading products…</p>
+          </div>
+        ) : (
+          <>
+            <div className="ent-table-scroll">
+              <table className="ent-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Purchase Price</th>
+                    <th>Stock</th>
+                    <th>Reorder Level</th>
+                    <th>Vendor</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.length === 0 ? (
+                    <tr>
+                      <td colSpan={8}>
+                        <div className="ent-empty">
+                          <div className="ent-empty-icon" style={{ fontSize: "1.5rem" }}>📦</div>
+                          <div className="ent-empty-title">{search ? "No products match" : "No products yet"}</div>
+                          <div className="ent-empty-text">
+                            {search ? "Try a different search term" : "Add your first product to get started."}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : paginated.map((p) => (
+                    <tr key={p.productId}>
+                      <td>
+                        <div className="primary" style={{ fontWeight: 500 }}>{p.productName}</div>
+                        <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{p.productId}</div>
+                      </td>
+                      <td>
+                        <code style={{
+                          background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 4,
+                          padding: "2px 6px", fontSize: "0.78rem", color: "#374151",
+                        }}>{p.sku}</code>
+                      </td>
+                      <td className="primary">₹{p.purchasePrice}</td>
+                      <td>
+                        <span style={{
+                          fontWeight: 600, fontSize: "0.9rem",
+                          color: p.stock === 0 || p.stock < p.reorderLevel * 0.5 ? "#dc2626"
+                            : p.stock <= p.reorderLevel ? "#d97706" : "#16a34a",
+                        }}>
+                          {p.stock}
+                        </span>
+                        <span style={{ color: "#9ca3af", fontSize: "0.75rem" }}> units</span>
+                      </td>
+                      <td style={{ color: "#4b5563" }}>{p.reorderLevel}</td>
+                      <td style={{ color: "#4b5563" }}>{p.vendorId}</td>
+                      <td>
+                        <StatusBadge stock={p.stock} reorderLevel={p.reorderLevel} />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button className="ent-btn ent-btn-ghost ent-btn-sm" title="View"
+                            onClick={() => navigate(`/view-product/${p.productId}`)}>
+                            <Eye size={14} />
+                          </button>
+                          <button className="ent-btn ent-btn-ghost ent-btn-sm" title="Issue"
+                            onClick={() => navigate(`/issue-product/${p.productId}`)}>
+                            <ArrowUpCircle size={14} />
+                          </button>
+                          <button className="ent-btn ent-btn-ghost ent-btn-sm" title="Purchase"
+                            onClick={() => navigate(`/purchase-product/${p.productId}`)}>
+                            <ArrowDownCircle size={14} />
+                          </button>
+                          <button className="ent-btn ent-btn-ghost ent-btn-sm" title="Update Price"
+                            onClick={() => navigate(`/update-price/${p.productId}`)}>
+                            <PencilSquare size={14} />
+                          </button>
+                          <button
+                            className="ent-btn ent-btn-danger ent-btn-sm" title="Delete"
+                            onClick={() => handleDelete(p.productId)}
+                            disabled={deletingId === p.productId}>
+                            <Trash size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="ent-pagination">
+                <span>
+                  Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                </span>
+                <div className="ent-pagination-btns">
+                  <button className="ent-page-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                    ‹ Prev
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button key={i} className={`ent-page-btn${page === i + 1 ? " active" : ""}`}
+                      onClick={() => setPage(i + 1)}>
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button className="ent-page-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                    Next ›
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 };
 

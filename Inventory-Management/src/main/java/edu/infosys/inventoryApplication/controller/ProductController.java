@@ -18,7 +18,6 @@ import edu.infosys.inventoryApplication.service.ProductService;
 
 @RestController
 @RequestMapping("/inventory/")
-@CrossOrigin(origins = "http://localhost:3838")
 public class ProductController {
 	@Autowired
 	private ProductService service;

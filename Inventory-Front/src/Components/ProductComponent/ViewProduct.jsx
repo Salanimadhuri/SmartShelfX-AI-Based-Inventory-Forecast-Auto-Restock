@@ -1,174 +1,139 @@
-
-
-import React, { useEffect, useState } from 'react';
-import { getProductById } from '../../Services/ProductService';
-import { getUserRole } from '../../Services/LoginService';
+import React, { useEffect, useState } from "react";
+import { getProductById } from "../../Services/ProductService";
+import { getUserRole } from "../../Services/LoginService";
 import { useParams, useNavigate } from "react-router-dom";
-
-// Inline Styles
-const styles = {
-  container: {
-    fontFamily: 'Segoe UI, Arial, sans-serif',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '80vh',
-    padding: '20px',
-    backgroundColor: '#f8f9fa',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '600px',
-    backgroundColor: '#fff',
-    borderRadius: '10px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    padding: '30px',
-  },
-  title: {
-    textAlign: 'center',
-    color: '#007bff',
-    marginBottom: '25px',
-    fontSize: '2em',
-    fontWeight: '700',
-    textDecoration: 'underline',
-    textUnderlineOffset: '6px',
-    textDecorationColor: '#007bff',
-  },
-  row: {
-    marginBottom: '10px',
-    fontSize: '1em',
-    color: '#495057',
-  },
-  label: {
-    fontWeight: 'bold',
-    marginRight: '5px',
-  },
-  reorderStatus: {
-    marginTop: '15px',
-    fontWeight: 'bold',
-    fontSize: '1.1em',
-    textAlign: 'center',
-    padding: '10px',
-    borderRadius: '5px',
-  },
-  buttonContainer: {
-    textAlign: 'center',
-    marginTop: '20px',
-  },
-  button: {
-    backgroundColor: '#17a2b8',
-    color: 'white',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    transition: 'background-color 0.2s, transform 0.1s',
-  },
-  buttonHover: {
-    backgroundColor: '#138496',
-    transform: 'scale(1.02)',
-  },
-};
+import {
+  BoxSeam, TagFill, CurrencyDollar, BarChartLine,
+  ArrowDownUp, Truck, ArrowLeft, CheckCircle, ExclamationTriangle,
+} from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
 const ViewProduct = () => {
   const { pid } = useParams();
   const navigate = useNavigate();
-
+  const [product, setProduct] = useState(null);
   const [role, setRole] = useState("");
-  const [product, setProduct] = useState({
-    productId: "",
-    productName: "",
-    sku: "",
-    purchasePrice: 0.0,
-    salesPrice: 0.0,
-    reorderLevel: 0.0,
-    stock: 0.0,
-    vendorId: "",
-    status: true,
-  });
-
-  // ✅ Fetch product details
-  const setProductData = () => {
-    getProductById(pid)
-      .then(response => setProduct(response.data))
-      .catch(error => console.error(" Error fetching product:", error));
-  };
-
-  // ✅ Fetch user role
-  const setUserRoleData = () => {
-    getUserRole()
-      .then(response => setRole(response.data))
-      .catch(error => console.error("Error fetching user role:", error));
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setProductData();
-    setUserRoleData();
+    Promise.all([getProductById(pid), getUserRole()])
+      .then(([p, r]) => { setProduct(p.data); setRole(r.data); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [pid]);
 
-  // ✅ Navigate back depending on role
   const returnBack = () => {
-    if (role === "Admin") navigate('/AdProdRepo');
-    else if (role === "Manager") navigate('/MngProdRepo');
-    else navigate('/');
+    if (role === "Admin") navigate("/AdProdRepo");
+    else if (role === "Manager") navigate("/MngProdRepo");
+    else navigate("/");
   };
 
-  // ✅ Calculate reorder status
-  const getReorderStatus = () => {
-    if (product.stock <= product.reorderLevel) {
-      return {
-        message: " Reorder Level Reached ",
-        color: "#dc3545", // red
-        background: "#f8d7da",
-      };
-    } else {
-      return {
-        message: "Permitted to Issue",
-        color: "#28a745", // green
-        background: "#d4edda",
-      };
-    }
-  };
+  const healthy = product && product.stock > product.reorderLevel;
 
-  const reorder = getReorderStatus();
+  const fields = product ? [
+    { icon: <BoxSeam size={14} />,      label: "Product ID",      value: product.productId },
+    { icon: <TagFill size={14} />,      label: "SKU",             value: product.sku },
+    { icon: <CurrencyDollar size={14} />,label: "Purchase Price",  value: `₹${product.purchasePrice}` },
+    { icon: <CurrencyDollar size={14} />,label: "Sales Price",     value: `₹${product.salesPrice}` },
+    { icon: <BarChartLine size={14} />, label: "Reorder Level",   value: product.reorderLevel },
+    { icon: <ArrowDownUp size={14} />,  label: "Current Stock",   value: `${product.stock} units`, highlight: true },
+    { icon: <Truck size={14} />,        label: "Vendor ID",       value: product.vendorId },
+  ] : [];
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h3 style={styles.title}>View Product Details</h3>
+    <div style={{
+      minHeight:"100vh", background:"#f9fafb",
+      display:"flex", alignItems:"flex-start", justifyContent:"center",
+      padding:"40px 24px", fontFamily:"var(--font,'Inter',sans-serif)",
+    }}>
+      <div style={{ width:"100%", maxWidth:440 }}>
+        <button onClick={returnBack} style={{
+          display:"flex", alignItems:"center", gap:6, background:"none", border:"none",
+          color:"#6b7280", fontSize:"0.875rem", cursor:"pointer", fontFamily:"inherit", padding:0, marginBottom:20,
+        }}>
+          <ArrowLeft size={14} /> Product List
+        </button>
 
-        <div style={styles.row}><span style={styles.label}>Product ID:</span>{product.productId}</div>
-        <div style={styles.row}><span style={styles.label}>SKU:</span>{product.sku}</div>
-        <div style={styles.row}><span style={styles.label}>Product Name:</span>{product.productName}</div>
-        <div style={styles.row}><span style={styles.label}>Purchase Price:</span>₹{product.purchasePrice}</div>
-        <div style={styles.row}><span style={styles.label}>Sales Price:</span>₹{product.salesPrice}</div>
-        <div style={styles.row}><span style={styles.label}>Reorder Level:</span>{product.reorderLevel}</div>
-        <div style={styles.row}><span style={styles.label}>Stock:</span>{product.stock}</div>
-        <div style={styles.row}><span style={styles.label}>Vendor:</span>{product.vendorId}</div>
+        <div className="ent-card" style={{ padding:"24px" }}>
+          {loading ? (
+            <div style={{ textAlign:"center", padding:"40px 0" }}>
+              <div className="ent-spinner" style={{ margin:"0 auto 12px" }} />
+              <p style={{ color:"#9ca3af", fontSize:"0.875rem" }}>Loading product…</p>
+            </div>
+          ) : product ? (
+            <>
+              {/* Product header */}
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+                <div style={{
+                  width:48, height:48, borderRadius:12, background:"#eff6ff",
+                  display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+                }}>
+                  <BoxSeam size={22} color="#1d4ed8" />
+                </div>
+                <div>
+                  <h2 style={{ fontWeight:700, color:"#111827", fontSize:"1.125rem", margin:0 }}>{product.productName}</h2>
+                  <code style={{
+                    background:"#f3f4f6", border:"1px solid #e5e7eb", borderRadius:5,
+                    padding:"2px 8px", fontSize:"0.78rem", color:"#374151",
+                  }}>{product.sku}</code>
+                </div>
+              </div>
 
-        {/* Reorder Status */}
-        <div
-          style={{
-            ...styles.reorderStatus,
-            color: reorder.color,
-            backgroundColor: reorder.background,
-          }}
-        >
-          {reorder.message}
-        </div>
+              {/* Fields */}
+              {fields.map(({ icon, label, value, highlight }, i) => (
+                <div key={i} style={{
+                  display:"flex", alignItems:"center", gap:12,
+                  padding:"10px 12px",
+                  background: highlight ? (healthy ? "#f0fdf4" : "#fef2f2") : i % 2 === 0 ? "#f9fafb" : "#fff",
+                  borderRadius:8, marginBottom:6,
+                  border: highlight ? `1px solid ${healthy ? "#bbf7d0" : "#fecaca"}` : "1px solid #f3f4f6",
+                }}>
+                  <div style={{
+                    width:28, height:28, borderRadius:7, background:"#f3f4f6",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    color:"#6b7280", flexShrink:0,
+                  }}>
+                    {icon}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:"0.72rem", color:"#9ca3af", fontWeight:500, marginBottom:1 }}>{label}</div>
+                    <div style={{ fontSize:"0.9rem", color:"#111827", fontWeight:500 }}>{value}</div>
+                  </div>
+                </div>
+              ))}
 
-        <div style={styles.buttonContainer}>
-          <button
-            style={styles.button}
-            onClick={returnBack}
-            onMouseOver={e => e.target.style.backgroundColor = '#138496'}
-            onMouseOut={e => e.target.style.backgroundColor = '#17a2b8'}
-          >
-          Return
-          </button>
+              {/* Stock status banner */}
+              <div style={{
+                marginTop:14, padding:"12px 14px", borderRadius:10,
+                display:"flex", alignItems:"center", gap:10,
+                background: healthy ? "#f0fdf4" : "#fef2f2",
+                border: `1.5px solid ${healthy ? "#bbf7d0" : "#fecaca"}`,
+              }}>
+                {healthy
+                  ? <CheckCircle size={18} color="#16a34a" />
+                  : <ExclamationTriangle size={18} color="#dc2626" />}
+                <div>
+                  <div style={{ fontWeight:700, color: healthy ? "#16a34a" : "#dc2626", fontSize:"0.9rem" }}>
+                    {healthy ? "Permitted to Issue" : "Reorder Level Reached"}
+                  </div>
+                  <div style={{ fontSize:"0.78rem", color:"#6b7280" }}>
+                    {healthy
+                      ? `${product.stock - product.reorderLevel} units above reorder level`
+                      : `${product.reorderLevel - product.stock} units below reorder level`}
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={returnBack} className="ent-btn ent-btn-primary" style={{ width:"100%", marginTop:18 }}>
+                Return to List
+              </button>
+            </>
+          ) : (
+            <p style={{ textAlign:"center", color:"#dc2626" }}>Product not found.</p>
+          )}
         </div>
       </div>
+      <style>{`@keyframes ent-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

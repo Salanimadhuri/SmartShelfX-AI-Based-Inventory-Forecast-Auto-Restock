@@ -9,4 +9,7 @@ import edu.infosys.inventoryApplication.bean.InventoryUser;
 public interface InventoryUserRepository extends JpaRepository<InventoryUser,String> {
 	@Query("select u.username from InventoryUser u where u.role=?1")  
 	List<String> getUsersByRole(String role);
+
+	@Query("select u from InventoryUser u where u.email=?1")
+	java.util.Optional<InventoryUser> findByEmail(String email);
 }

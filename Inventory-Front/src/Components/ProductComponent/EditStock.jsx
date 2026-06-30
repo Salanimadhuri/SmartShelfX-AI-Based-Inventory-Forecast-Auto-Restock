@@ -2,191 +2,222 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { getAllProducts, issueProduct, purchaseProduct } from "../../Services/ProductService";
 import { generateTransactionId, saveTransaction } from "../../Services/TransactionService";
-
-// STYLES ARE UNCHANGED
-const styles = {
-  container: { fontFamily: "Segoe UI, Arial, sans-serif", padding: "20px", backgroundColor: "#f9fafb", minHeight: "100vh" },
-  card: { backgroundColor: "white", padding: "30px 40px", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxWidth: "650px", margin: "auto", border: "1px solid #e5e7eb" },
-  title: { textAlign: "center", fontSize: "24px", fontWeight: "bold", color: "#111827", borderBottom: "2px solid #007bff", paddingBottom: "8px", marginBottom: "20px" },
-  infoBox: { backgroundColor: "#f8fafc", borderRadius: "8px", padding: "15px 20px", marginBottom: "25px", border: "1px solid #e5e7eb" },
-  infoRow: { display: "grid", gridTemplateColumns: "180px 1fr", padding: "4px 0", fontSize: "16px" },
-  label: { fontWeight: "600", color: "#374151" },
-  input: { width: "100%", padding: "10px", marginTop: "8px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "15px" },
-  buttonContainer: { display: "flex", justifyContent: "center", gap: "20px", marginTop: "20px" },
-  button: { backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "6px", padding: "10px 25px", fontWeight: "600", cursor: "pointer" },
-  returnButton: { backgroundColor: "#198754" },
-  summary: { textAlign: "center", marginTop: "20px", fontSize: "18px", fontWeight: "bold" },
-  reorderAlert: { textAlign: "center", color: "red", fontWeight: "600", marginTop: "10px" },
-  success: { textAlign: "center", color: "green", fontWeight: "600", marginTop: "10px" },
-  error: { textAlign: "center", color: "red", fontWeight: "600", marginTop: "10px" },
-};
+import {
+  ArrowUpCircle, ArrowDownCircle, ExclamationCircle, CheckCircle, ArrowLeft,
+} from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
 const EditStock = ({ mode }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const returnPath = new URLSearchParams(location.search).get("returnPath") || "/AdProdRepo";
 
-  const queryParams = new URLSearchParams(location.search);
-  const returnPath = queryParams.get("returnPath") || "/AdProdRepo";
-
-  const [product, setProduct] = useState({
-     productId: "",
-  productName: "",
-  sku: "",
-  purchasePrice: 0.0,
-  salesPrice: 0.0,
-  reorderLevel: 0.0,
-  stock: 0.0,
-  vendorId: "",
-  status: true, 
-  });
+  const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [transactionDate, setTransactionDate] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("error");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showReorderAlert, setShowReorderAlert] = useState(false);
-
-  // This new state will hold the message we pass back to the report page
   const [navMessage, setNavMessage] = useState("");
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      // ... (This useEffect is unchanged)
+    (async () => {
       try {
-        const res = await getAllProducts();
-        const found = res.data.find((p) => String(p.productId) === id);
-      setProduct({ ...found, status: true });
-  const resTransaction = await generateTransactionId();
-        setTransactionId(resTransaction.data);
-      } catch (err) {
-        console.error("Error fetching product or transaction ID:", err);
-      }
-    };
-    fetchProduct();
+        const [res, txnRes] = await Promise.all([getAllProducts(), generateTransactionId()]);
+        const found = res.data.find(p => String(p.productId) === id);
+        setProduct({ ...found, status: true });
+        setTransactionId(txnRes.data);
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+    })();
   }, [id]);
 
   useEffect(() => {
-    // ... (This useEffect is unchanged)
     if (product && mode === "issue") {
-      const enteredQuantity = Number(quantity);
-      if (!isNaN(enteredQuantity) && enteredQuantity > 0) {
-        setShowReorderAlert(product.stock - enteredQuantity <= product.reorderLevel);
-      } else {
-        setShowReorderAlert(false);
-      }
+      const q = Number(quantity);
+      setShowReorderAlert(!isNaN(q) && q > 0 && (product.stock - q) <= product.reorderLevel);
     }
   }, [quantity, product, mode]);
 
-  // *** THIS FUNCTION IS UPDATED ***
   const handleSave = async () => {
-    const enteredQuantity = Number(quantity);
-
-    if (!enteredQuantity || isNaN(enteredQuantity) || enteredQuantity <= 0) {
-      setMessage("Please enter a valid quantity!");
-      setMessageType("error");
-      return;
-    }
-
-    const txnDate = transactionDate || new Date().toISOString().split("T")[0];
-
-    const user = JSON.parse(localStorage.getItem("loggedInUser") || "{}");
-    const rate = mode === "issue" ? product.salesPrice : product.purchasePrice;
-    const calculatedTxnValue = enteredQuantity * rate; // Calculate value
-
-    const transaction = {
-      transactionId,
-      transactionType: mode,
-      productId: product.productId,
-      quantity: enteredQuantity,
-      rate,
-      transactionValue: calculatedTxnValue, // Use calculated value
-      transactionDate: txnDate,
-      userId: user.username || "unknown",
-    };
-
+    const q = Number(quantity);
+    if (!q || isNaN(q) || q <= 0) { setMessage("Enter a valid quantity."); setMessageType("error"); return; }
+    setSaving(true);
     try {
+      const txnDate = transactionDate || new Date().toISOString().split("T")[0];
+      const user = JSON.parse(localStorage.getItem("loggedInUser") || "{}");
+      const rate = mode === "issue" ? product.salesPrice : product.purchasePrice;
+      const txnValue = q * rate;
+      const transaction = {
+        transactionId, transactionType: mode, productId: product.productId,
+        quantity: q, rate, transactionValue: txnValue,
+        transactionDate: txnDate, userId: user.username || "unknown",
+      };
       await saveTransaction(transaction);
-      
-      let baseSuccessMessage = "";
-
-      if (mode === "issue") {
-        await issueProduct(id, enteredQuantity);
-        baseSuccessMessage = "Issued successfully!";
-      } else {
-        await purchaseProduct(id, enteredQuantity);
-        baseSuccessMessage = "Purchased successfully!";
-      }
-
-      // 1. Set the message for the *next* page
-      setNavMessage(baseSuccessMessage); 
-
-      // 2. Set the message to display *on this page*
-      setMessage(`${baseSuccessMessage} Transaction Value: ₹${calculatedTxnValue}`);
-      
+      if (mode === "issue") await issueProduct(id, q);
+      else await purchaseProduct(id, q);
+      const msg = mode === "issue"
+        ? `Issued ${q} units. Transaction value: ₹${txnValue}`
+        : `Purchased ${q} units. Transaction value: ₹${txnValue}`;
+      setNavMessage(msg);
+      setMessage(msg);
       setMessageType("success");
       setShowReorderAlert(false);
-
-      // 3. REMOVED the setTimeout navigation
-      // setTimeout(() => navigate(returnPath), 2000); // <-- THIS IS GONE
-
-    } catch (error) {
-      console.error("Error updating stock:", error);
-      setMessage("Operation failed!");
+    } catch {
+      setMessage("Operation failed. Please try again.");
       setMessageType("error");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (!product) return <div>Loading product details...</div>;
+  const isIssue = mode === "issue";
+  const rate = product ? (isIssue ? product.salesPrice : product.purchasePrice) : 0;
+  const txnPreview = quantity && Number(quantity) > 0 ? (Number(quantity) * rate).toFixed(2) : null;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>{mode === "issue" ? "Product Issue" : "Product Purchase"}</h2>
+    <div style={{
+      minHeight:"100vh", background:"#f9fafb",
+      display:"flex", alignItems:"flex-start", justifyContent:"center",
+      padding:"40px 24px", fontFamily:"var(--font,'Inter',sans-serif)",
+    }}>
+      <div style={{ width:"100%", maxWidth:560 }}>
+        <button onClick={() => navigate(returnPath, { state: { message: navMessage || undefined } })} style={{
+          display:"flex", alignItems:"center", gap:6, background:"none", border:"none",
+          color:"#6b7280", fontSize:"0.875rem", cursor:"pointer", fontFamily:"inherit", padding:0, marginBottom:20,
+        }}>
+          <ArrowLeft size={14} /> Product List
+        </button>
 
-        <div style={styles.infoBox}>
-          {/* ... (Unchanged InfoBox JSX) ... */}
-          <div style={styles.infoRow}><span style={styles.label}>Product Id:</span> {product.productId}</div>
-          <div style={styles.infoRow}><span style={styles.label}>SKU:</span> {product.sku}</div>
-          <div style={styles.infoRow}><span style={styles.label}>Product Name:</span> {product.productName}</div>
-          <div style={styles.infoRow}><span style={styles.label}>{mode === "issue" ? "Sales Price:" : "Purchase Price:"}</span> ₹{mode === "issue" ? product.salesPrice : product.purchasePrice}</div>
-          <div style={styles.infoRow}><span style={styles.label}>Reorder Level:</span> {product.reorderLevel}</div>
-          <div style={styles.infoRow}><span style={styles.label}>Stock:</span> {product.stock}</div>
-          <div style={styles.infoRow}><span style={styles.label}>Vendor:</span> {product.vendorId}</div>
-        </div>
-
-        <div>
-          {/* ... (Unchanged Input fields JSX) ... */}
-          <div style={styles.infoRow}>
-            <span style={styles.label}>Transaction Id:</span>
-            <input type="text" value={transactionId} readOnly style={styles.input} />
+        <div className="ent-card" style={{ padding:"28px" }}>
+          {/* Header */}
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, paddingBottom:16, borderBottom:"1px solid #f3f4f6" }}>
+            <div style={{
+              width:40, height:40, borderRadius:10, flexShrink:0,
+              background: isIssue ? "#fef3c7" : "#dcfce7",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              {isIssue
+                ? <ArrowUpCircle size={20} color="#d97706" />
+                : <ArrowDownCircle size={20} color="#16a34a" />}
+            </div>
+            <div>
+              <h2 style={{ fontWeight:700, color:"#111827", fontSize:"1.125rem", margin:0 }}>
+                {isIssue ? "Issue Stock" : "Purchase Stock"}
+              </h2>
+              <p style={{ color:"#6b7280", fontSize:"0.8125rem", margin:"2px 0 0" }}>
+                {isIssue ? "Record stock outflow" : "Record stock inflow"}
+              </p>
+            </div>
           </div>
-          <div style={styles.infoRow}>
-            <span style={styles.label}>Select Transaction Date:</span>
-            <input type="date" value={transactionDate} onChange={(e) => setTransactionDate(e.target.value)} style={styles.input} />
-          </div>
-          <div style={styles.infoRow}>
-            <span style={styles.label}>{mode === "issue" ? "Enter Issued Stock Quantity:" : "Enter Purchased Stock Quantity:"}</span>
-            <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} style={styles.input} />
-          </div>
 
-          {/* This will now show "Purchased successfully! Transaction Value: ₹24000" */}
-          {message && <p style={messageType === "success" ? styles.success : styles.error}>{message}</p>}
-          {showReorderAlert && <div style={styles.reorderAlert}>⚠ Product reached Re-Order Level!</div>}
-        </div>
+          {loading ? (
+            <div style={{ textAlign:"center", padding:"32px 0" }}>
+              <div className="ent-spinner" style={{ margin:"0 auto 12px" }} />
+              <p style={{ color:"#9ca3af", fontSize:"0.875rem" }}>Loading product details…</p>
+            </div>
+          ) : product ? (
+            <>
+              {/* Product summary */}
+              <div style={{
+                background:"#f9fafb", border:"1px solid #e5e7eb", borderRadius:10,
+                padding:"14px 16px", marginBottom:20,
+                display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px 20px",
+              }}>
+                {[
+                  ["Product ID",    product.productId],
+                  ["Product Name",  product.productName],
+                  ["SKU",           product.sku],
+                  ["Current Stock", `${product.stock} units`],
+                  [isIssue ? "Sales Price" : "Purchase Price", `₹${isIssue ? product.salesPrice : product.purchasePrice}`],
+                  ["Reorder Level", product.reorderLevel],
+                ].map(([label, val]) => (
+                  <div key={label}>
+                    <div style={{ fontSize:"0.72rem", color:"#9ca3af", fontWeight:500, marginBottom:2 }}>{label}</div>
+                    <div style={{ fontSize:"0.875rem", color:"#111827", fontWeight:500 }}>{val}</div>
+                  </div>
+                ))}
+              </div>
 
-        <div style={styles.buttonContainer}>
-          <button style={styles.button} onClick={handleSave}>Save</button>
-          
-          {/* *** THIS BUTTON IS UPDATED *** */}
-          <button 
-            style={{ ...styles.button, ...styles.returnButton }} 
-            onClick={() => navigate(returnPath, { state: { message: navMessage || undefined } })}
-          >
-            Return
-          </button>
+              {/* Transaction ID */}
+              <div className="ent-field">
+                <label className="ent-label">Transaction ID</label>
+                <input className="ent-input" value={transactionId} readOnly />
+              </div>
+
+              {/* Date */}
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="txn-date">Transaction Date</label>
+                <input id="txn-date" type="date" className="ent-input"
+                  value={transactionDate} onChange={e => setTransactionDate(e.target.value)} />
+              </div>
+
+              {/* Quantity */}
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="qty">{isIssue ? "Quantity to Issue" : "Quantity to Purchase"}</label>
+                <input id="qty" type="number" className="ent-input"
+                  value={quantity} onChange={e => { setQuantity(e.target.value); setMessage(""); }}
+                  placeholder="Enter quantity" min="1" />
+              </div>
+
+              {/* Transaction value preview */}
+              {txnPreview && (
+                <div style={{
+                  padding:"10px 14px", borderRadius:8, marginBottom:14,
+                  background: isIssue ? "#fef3c7" : "#dcfce7",
+                  border:`1px solid ${isIssue ? "#fde68a" : "#bbf7d0"}`,
+                  fontSize:"0.875rem", fontWeight:600,
+                  color: isIssue ? "#d97706" : "#16a34a",
+                }}>
+                  Transaction Value: ₹{txnPreview}
+                </div>
+              )}
+
+              {/* Reorder alert */}
+              {showReorderAlert && (
+                <div className="ent-alert ent-alert-warning">
+                  <ExclamationCircle size={14} />
+                  This issue will bring stock to or below reorder level.
+                </div>
+              )}
+
+              {/* Result message */}
+              {message && (
+                <div className={`ent-alert ${messageType === "success" ? "ent-alert-success" : "ent-alert-error"}`}>
+                  {messageType === "success" ? <CheckCircle size={14} /> : <ExclamationCircle size={14} />}
+                  {message}
+                </div>
+              )}
+
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={handleSave} disabled={saving}
+                  className={`ent-btn ent-btn-lg ${isIssue ? "ent-btn-secondary" : "ent-btn-success"}`}
+                  style={{ flex:1, ...(isIssue ? { background:"#d97706", color:"#fff", borderColor:"#d97706" } : {}) }}>
+                  {saving ? (
+                    <><span className="ent-spinner-dark" style={{ width:16, height:16 }} /> Processing…</>
+                  ) : (isIssue ? "Issue Stock" : "Purchase Stock")}
+                </button>
+                <button onClick={() => navigate(returnPath, { state: { message: navMessage || undefined } })}
+                  className="ent-btn ent-btn-ghost ent-btn-lg">
+                  Return
+                </button>
+              </div>
+            </>
+          ) : (
+            <p style={{ textAlign:"center", color:"#dc2626" }}>Product not found.</p>
+          )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes ent-spin { to { transform: rotate(360deg); } }
+        .ent-spinner { display:inline-block; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:ent-spin 0.7s linear infinite; }
+        .ent-spinner-dark { display:inline-block; border:2px solid rgba(0,0,0,0.15); border-top-color:#374151; border-radius:50%; animation:ent-spin 0.7s linear infinite; }
+      `}</style>
     </div>
   );
 };

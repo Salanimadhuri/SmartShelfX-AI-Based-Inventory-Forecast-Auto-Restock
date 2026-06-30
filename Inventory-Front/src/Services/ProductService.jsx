@@ -1,8 +1,8 @@
 // Services/ProductService.js
 import axios from "axios";
-
-const BASE_URL = "http://localhost:9898/inventory/product";
-const ID_GEN_URL = "http://localhost:9898/inventory/id-gen";
+import API_BASE from "./config";
+const BASE_URL = `${API_BASE}/inventory/product`;
+const ID_GEN_URL = `${API_BASE}/inventory/id-gen`;
 
 // Fetch all products
 export const getAllProducts = async () => {

@@ -1,172 +1,119 @@
 import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import { save } from '../../Services/SKUService';
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center', // vertically center
-    padding: '1rem',
-    backgroundColor: '#f5f5f5',
-    minHeight: '100vh',
-  },
-  card: {
-    backgroundColor: '#fff',
-    padding: '1rem', // reduced padding
-    borderRadius: '10px',
-    boxShadow: '0 3px 8px rgba(0,0,0,0.1)',
-    width: '100%',
-    maxWidth: '350px', // narrower card
-  },
-  title: {
-    textAlign: 'center',
-    color: '#333',
-    marginBottom: '0.8rem', // reduced spacing
-    fontSize: '1.3rem', // slightly smaller
-    fontWeight: '600',
-  },
-  formGroup: {
-    marginBottom: '0.8rem', // smaller spacing between fields
-  },
-  label: {
-    display: 'block',
-    marginBottom: '0.2rem',
-    fontWeight: '500',
-    color: '#555',
-    fontSize: '0.85rem',
-  },
-  input: {
-    width: '100%',
-    padding: '0.35rem', // smaller height
-    borderRadius: '5px',
-    border: '1px solid #ccc',
-    fontSize: '0.85rem',
-    boxSizing: 'border-box',
-  },
-  inputError: {
-    border: '1px solid #dc3545',
-  },
-  errorText: {
-    color: '#dc3545',
-    fontSize: '0.75rem',
-    marginTop: '0.2rem',
-  },
-  submitButton: {
-    width: '100%',
-    padding: '0.5rem', // smaller button height
-    backgroundColor: '#0d6efd',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '5px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-  },
-};
+import { useNavigate } from "react-router-dom";
+import { save } from "../../Services/SKUService";
+import { TagFill, CheckCircle, ExclamationCircle, ArrowLeft } from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
 const SKUAddition = () => {
+  const navigate = useNavigate();
   const [sku, setSku] = useState({ skuId: "", skuDescription: "" });
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const onChangeHandler = (e) => {
+  const onChange = (e) => {
     const { name, value } = e.target;
-    setSku(prev => ({ ...prev, [name]: value }));
+    setSku(p => ({ ...p, [name]: value }));
+    setErrors(p => ({ ...p, [name]: "" }));
   };
 
-  const saveSku = async () => {
+  const validate = () => {
+    const e = {};
+    if (!sku.skuId.trim()) e.skuId = "SKU ID is required";
+    if (!sku.skuDescription.trim()) e.skuDescription = "Description is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
     try {
       await save(sku);
-      alert("New SKU added successfully!");
-      navigate('/AdminMenu');
-    } catch (error) {
-      console.error("Error saving SKU:", error);
-      alert("Failed to add SKU. Please try again.");
+      setSaved(true);
+      setTimeout(() => navigate("/AdminMenu"), 1500);
+    } catch {
+      setErrors({ general: "Failed to save SKU. Please try again." });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleValidation = (e) => {
-    e.preventDefault();
-    let tempErrors = {};
-    let isValid = true;
-
-    if (!sku.skuId.trim()) {
-      tempErrors.skuId = "SKU ID is required";
-      isValid = false;
-    }
-
-    if (!sku.skuDescription.trim()) {
-      tempErrors.skuDescription = "SKU description is required";
-      isValid = false;
-    }
-
-    setErrors(tempErrors);
-    if (isValid) saveSku();
-  };
+  if (saved) {
+    return (
+      <div style={{ minHeight:"100vh", background:"#f9fafb", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"var(--font,'Inter',sans-serif)" }}>
+        <div style={{ textAlign:"center" }}>
+          <CheckCircle size={40} color="#16a34a" style={{ marginBottom:12 }} />
+          <h3 style={{ fontWeight:700, color:"#111827", marginBottom:6 }}>SKU Added</h3>
+          <p style={{ color:"#6b7280", fontSize:"0.875rem" }}>Redirecting to dashboard…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Add New SKU</h2>
-        <form onSubmit={handleValidation}>
-  <div style={styles.formGroup}>
-    <label style={styles.label}>SKU ID:</label>
-    <input
-      type="text"
-      name="skuId"
-      value={sku.skuId}
-      onChange={onChangeHandler}
-      style={{ 
-        ...styles.input, 
-        ...(errors.skuId ? styles.inputError : {}) 
-      }}
-      placeholder="Enter SKU ID"
-    />
-    {errors.skuId && <p style={styles.errorText}>{errors.skuId}</p>}
-  </div>
+    <div style={{ minHeight:"100vh", background:"#f9fafb", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 24px", fontFamily:"var(--font,'Inter',sans-serif)" }}>
+      <div style={{ width:"100%", maxWidth:440 }}>
+        <button onClick={() => navigate("/AdminMenu")} style={{
+          display:"flex", alignItems:"center", gap:6, background:"none", border:"none",
+          color:"#6b7280", fontSize:"0.875rem", cursor:"pointer", fontFamily:"inherit", padding:0, marginBottom:20,
+        }}>
+          <ArrowLeft size={14} /> Dashboard
+        </button>
 
-  <div style={styles.formGroup}>
-    <label style={styles.label}>SKU Description:</label>
-    <input
-      type="text"
-      name="skuDescription"
-      value={sku.skuDescription}
-      onChange={onChangeHandler}
-      style={{ 
-        ...styles.input, 
-        ...(errors.skuDescription ? styles.inputError : {}) 
-      }}
-      placeholder="Enter SKU description"
-    />
-    {errors.skuDescription && <p style={styles.errorText}>{errors.skuDescription}</p>}
-  </div>
+        <div className="ent-card" style={{ padding:"28px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
+            <div style={{ width:40, height:40, borderRadius:10, background:"#eff6ff", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <TagFill size={18} color="#1d4ed8" />
+            </div>
+            <div>
+              <h2 style={{ fontWeight:700, color:"#111827", fontSize:"1.125rem", margin:0 }}>Add New SKU</h2>
+              <p style={{ color:"#6b7280", fontSize:"0.8125rem", margin:"2px 0 0" }}>Create a new Stock Keeping Unit</p>
+            </div>
+          </div>
 
-  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-    <button type="submit" style={styles.submitButton}>
-      Add SKU
-    </button>
-    <button
-    type="button"
-    style={{ ...styles.submitButton, backgroundColor: '#ffc107' }}
-    onClick={() => setSku({ skuId: "", skuDescription: "" })}
-  >
-    Reset
-  </button>
-    <button
-      type="button"
-      style={{ 
-        ...styles.submitButton, 
-        backgroundColor: '#6c757d' 
-      }}
-      onClick={() => navigate('/AdminMenu')}
-    >
-      Return
-    </button>
-  </div>
-</form>
+          {errors.general && (
+            <div className="ent-alert ent-alert-error">
+              <ExclamationCircle size={14} /> {errors.general}
+            </div>
+          )}
 
+          <form onSubmit={handleSubmit}>
+            <div className="ent-field">
+              <label className="ent-label" htmlFor="skuId">SKU ID</label>
+              <input id="skuId" name="skuId" value={sku.skuId} onChange={onChange}
+                className={`ent-input${errors.skuId?" error":""}`}
+                placeholder="e.g. SKU-001" />
+              {errors.skuId && <p className="ent-error">{errors.skuId}</p>}
+            </div>
+
+            <div className="ent-field">
+              <label className="ent-label" htmlFor="skuDescription">Description</label>
+              <input id="skuDescription" name="skuDescription" value={sku.skuDescription} onChange={onChange}
+                className={`ent-input${errors.skuDescription?" error":""}`}
+                placeholder="e.g. Standard 500ml Beverage Unit" />
+              {errors.skuDescription && <p className="ent-error">{errors.skuDescription}</p>}
+            </div>
+
+            <div style={{ display:"flex", gap:8, marginTop:4 }}>
+              <button type="submit" disabled={loading}
+                className="ent-btn ent-btn-primary ent-btn-lg" style={{ flex:1 }}>
+                {loading ? (
+                  <><span className="ent-spinner" style={{ width:16, height:16, borderWidth:2 }} /> Saving…</>
+                ) : "Add SKU"}
+              </button>
+              <button type="button" onClick={() => setSku({ skuId:"", skuDescription:"" })}
+                className="ent-btn ent-btn-secondary ent-btn-lg">
+                Reset
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
+      <style>{`@keyframes ent-spin { to { transform: rotate(360deg); } }
+        .ent-spinner { display:inline-block; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:ent-spin 0.7s linear infinite; }
+      `}</style>
     </div>
   );
 };

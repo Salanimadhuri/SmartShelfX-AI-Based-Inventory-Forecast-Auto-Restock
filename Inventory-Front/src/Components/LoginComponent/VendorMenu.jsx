@@ -1,62 +1,61 @@
 import React from "react";
-import Nav from "react-bootstrap/Nav";
-import Navbar from "react-bootstrap/Navbar";
-import NavDropdown from "react-bootstrap/NavDropdown";
+import AppShell from "../UI/AppShell";
+import { PersonCircle, ShieldLock, ArrowRight } from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
-const VendorMenu = () => {
+export default function VendorMenu() {
+  const storedUser = localStorage.getItem("loggedInUser");
+  const username = storedUser ? JSON.parse(storedUser).username : "Vendor";
+
   return (
-    <div
-      className=".container"
-      style={{
-        background: "linear-gradient(to bottom right, #f3e5f5, #e1bee7, #ce93d8)",
-        minHeight: "100vh",
-      }}
-    >
-      <br />
-
-      {/* Header Section */}
-      <div
-        align="center"
-        style={{
-          backgroundColor: "#e1bee7",
-          padding: "15px 0",
-          borderBottom: "3px solid #8e24aa",
-        }}
-      >
-        <h1
-          className="text-center"
-          style={{
-            color: "#6a1b9a",
-            fontFamily: "'Poppins', sans-serif",
-            fontWeight: "600",
-            letterSpacing: "1px",
-          }}
-        >
-          <u><i>Inventory Vendor Menu</i></u>
+    <AppShell role="Vendor" breadcrumb={[{ label: "Dashboard" }]}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+          Welcome, {username}
         </h1>
+        <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+          Vendor portal — view your account information below.
+        </p>
       </div>
 
-      {/* Navigation Bar */}
-      <Navbar
-        expand="lg"
-        style={{
-          background: "linear-gradient(90deg, #ba68c8, #ab47bc, #8e24aa)",
-          boxShadow: "0 3px 10px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <Navbar.Collapse id="basic-navbar-nav">
-          <Nav className="me-auto" style={{ fontWeight: "500" }}>
-            <Nav.Link href="/ShowSingleUser" style={{ color: "white" }}>
-              <b>Show User Details</b>
-            </Nav.Link>
-            <Nav.Link href="/" style={{ color: "white" }}>
-              <b>Logout</b>
-            </Nav.Link>
-          </Nav>
-        </Navbar.Collapse>
-      </Navbar>
-    </div>
-  );
-};
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 600 }}>
+        {/* Profile card */}
+        <div className="ent-card" style={{ padding: "24px 20px", textAlign: "center" }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%", background: "#eff6ff",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 14px",
+          }}>
+            <PersonCircle size={32} color="#1d4ed8" />
+          </div>
+          <div style={{ fontWeight: 600, color: "#111827", marginBottom: 4 }}>{username}</div>
+          <span className="ent-badge ent-badge-blue" style={{ marginBottom: 16 }}>Vendor</span>
+          <div>
+            <a href="/ShowSingleUser"
+              className="ent-btn ent-btn-primary ent-btn-sm"
+              style={{ textDecoration: "none" }}>
+              <ArrowRight size={13} /> View Profile
+            </a>
+          </div>
+        </div>
 
-export default VendorMenu;
+        {/* Info card */}
+        <div className="ent-card" style={{ padding: "24px 20px" }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 8, background: "#eff6ff",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginBottom: 12,
+          }}>
+            <ShieldLock size={18} color="#1d4ed8" />
+          </div>
+          <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#111827", marginBottom: 8 }}>
+            Limited Access
+          </h3>
+          <p style={{ fontSize: "0.875rem", color: "#6b7280", lineHeight: 1.6 }}>
+            As a vendor, you have read-only access. Contact your administrator to request additional permissions.
+          </p>
+        </div>
+      </div>
+    </AppShell>
+  );
+}

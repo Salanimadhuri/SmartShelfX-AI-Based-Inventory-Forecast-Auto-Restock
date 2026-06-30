@@ -1,7 +1,7 @@
 import axios from 'axios';
- 
-const SKU_URL='http://localhost:9898/inventory/SKU';
-const ID_URL='http://localhost:9898/inventory/all-ids';
+import API_BASE from "./config";
+const SKU_URL = `${API_BASE}/inventory/SKU`;
+const ID_URL  = `${API_BASE}/inventory/all-ids`;
 
 
 	export const save=(sku)=>{

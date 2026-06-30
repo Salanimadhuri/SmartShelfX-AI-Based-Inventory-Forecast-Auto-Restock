@@ -1,174 +1,210 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getAllTransactions } from "../../Services/TransactionService";
-
-const styles = {
-  container: {
-    fontFamily: 'Segoe UI, Arial, sans-serif',
-    padding: '30px',
-    maxWidth: '1200px',
-    margin: 'auto',
-  },
-  title: {
-    textAlign: 'center',
-    color: '#007bff',
-    marginBottom: '25px',
-    fontSize: '2.5em',
-    fontWeight: '700',
-    textDecoration: 'underline',
-    textUnderlineOffset: '8px',
-    textDecorationColor: '#007bff',
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-    borderRadius: '8px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    marginTop: '20px',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    minWidth: '900px',
-  },
-  tableHeader: {
-    padding: '12px 15px',
-    textAlign: 'left',
-    backgroundColor: '#343a40',
-    color: '#fff',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  tableCell: {
-    padding: '12px 15px',
-    borderBottom: '1px solid #dee2e6',
-    fontSize: '0.95em',
-    color: '#495057',
-  },
-  tableRowOdd: { backgroundColor: '#f8f9fa' },
-  tableRowEven: { backgroundColor: '#fff' },
-  returnButtonContainer: {
-    marginTop: '25px',
-    textAlign: 'center',
-  },
-  returnButton: {
-    backgroundColor: '#17a2b8',
-    color: 'white',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '1em',
-    fontWeight: 'bold',
-    transition: 'background-color 0.2s, transform 0.1s',
-  },
-};
+import { getTransactionInsights } from "../../Services/AIService";
+import { Search, ArrowUpCircle, ArrowDownCircle, CurrencyDollar, BarChartLine } from "react-bootstrap-icons";
+import AppShell from "../UI/AppShell";
+import "../UI/EnterpriseStyles.css";
 
 const formatDate = (dateStr) => {
-  const date = new Date(dateStr);
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = date.getFullYear();
- return `${dd}-${mm}-${yyyy}`; 
+  const d = new Date(dateStr);
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 };
+
+const PAGE_SIZE = 15;
 
 const TransactionReport = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [transactions, setTransactions] = useState([]);
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [page, setPage] = useState(1);
 
-  // Read transaction type (issue/purchase/all)
   const queryParams = new URLSearchParams(location.search);
-  const filterType = queryParams.get("type"); // "issue", "purchase", or null
+  const urlFilterType = queryParams.get("type");
 
   const storedUser = localStorage.getItem("loggedInUser");
   let user = { username: "unknown" };
   if (storedUser) {
-    try {
-      if (storedUser.startsWith("{")) user = JSON.parse(storedUser);
-      else user.username = storedUser;
-    } catch (error) {
-      console.error(error);
-    }
+    try { user = storedUser.startsWith("{") ? JSON.parse(storedUser) : { username: storedUser }; }
+    catch { /* ignore */ }
   }
 
-  const fetchTransactions = async () => {
-    try {
-      const res = await getAllTransactions();
-      let data = res.data;
-
-      // 🔹 Apply filtering based on "type" parameter
-      if (filterType === "issue") {
-        data = data.filter(t => t.transactionType === "issue");
-      } else if (filterType === "purchase") {
-        data = data.filter(t => t.transactionType === "purchase");
-      }
-
-      setTransactions(data);
-    } catch (err) {
-      console.error("Error fetching transactions:", err);
-    }
-  };
+  const role = localStorage.getItem("loggedInRole");
 
   useEffect(() => {
-    if (!storedUser) navigate("/login");
-    else fetchTransactions();
-  }, [filterType]);
+    if (!storedUser) { navigate("/"); return; }
+    if (urlFilterType === "issue" || urlFilterType === "purchase") setFilterType(urlFilterType);
+    getAllTransactions()
+      .then((res) => { setInsights(getTransactionInsights(res.data)); setTransactions(res.data); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleReturn = () => {
-    const role = localStorage.getItem("loggedInRole");
-    if (role === "Admin") navigate("/AdminMenu");
-    else if (role === "Manager") navigate("/ManagerMenu");
-    else if (role === "Vendor") navigate("/VendorMenu");
-    else navigate("/login");
-  };
+  const pageTitle = urlFilterType === "issue" ? "Issue History"
+    : urlFilterType === "purchase" ? "Purchase History" : "All Transactions";
+
+  const breadcrumbBase = role === "Manager"
+    ? [{ label: "Dashboard", href: "/ManagerMenu" }]
+    : [{ label: "Dashboard", href: "/AdminMenu" }];
+
+  const filtered = useMemo(() => {
+    let data = transactions;
+    if (filterType !== "all") data = data.filter(t => t.transactionType === filterType);
+    if (search) data = data.filter(t =>
+      String(t.transactionId).toLowerCase().includes(search.toLowerCase()) ||
+      String(t.productId).toLowerCase().includes(search.toLowerCase())
+    );
+    return data;
+  }, [transactions, filterType, search]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const handleSearch = (val) => { setSearch(val); setPage(1); };
+  const handleFilter = (val) => { setFilterType(val); setPage(1); };
 
   return (
-    <div style={styles.container}>
-      <h2 style={styles.title}>
-        {filterType === "issue"
-          ? "Issued History"
-          : filterType === "purchase"
-          ? "Purchase History"
-          : "All Transactions "}
-      </h2>
+    <AppShell role={role || "Admin"} breadcrumb={[...breadcrumbBase, { label: pageTitle }]}>
+      <div className="ent-page-header">
+        <div>
+          <h2 className="ent-page-title">{pageTitle}</h2>
+          <p className="ent-page-subtitle">{transactions.length} total transactions</p>
+        </div>
+      </div>
 
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.tableHeader}>ID</th>
-              <th style={styles.tableHeader}>Product ID</th>
-              <th style={styles.tableHeader}>Quantity</th>
-              <th style={styles.tableHeader}>Rate</th>
-              <th style={styles.tableHeader}>Type</th>
-              <th style={styles.tableHeader}>Value</th>
-              <th style={styles.tableHeader}>Date</th>
-              <th style={styles.tableHeader}>User</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((t, idx) => (
-              <tr key={t.transactionId} style={idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}>
-                <td style={styles.tableCell}>{t.transactionId}</td>
-                <td style={styles.tableCell}>{t.productId}</td>
-                <td style={styles.tableCell}>{t.quantity}</td>
-                <td style={styles.tableCell}>{t.rate}</td>
-                <td style={styles.tableCell}>{t.transactionType === "issue" ? "OUT" : "IN"}</td>
-                <td style={styles.tableCell}>{t.transactionValue}</td>
-                <td style={styles.tableCell}>{formatDate(t.transactionDate)}</td>
-                <td style={styles.tableCell}>{t.userId || user.username}</td>
-              </tr>
+      {/* Summary cards */}
+      {insights && (
+        <div className="ent-grid-4" style={{ marginBottom: 20 }}>
+          {[
+            {
+              icon: <CurrencyDollar size={18} />, label: "Total Revenue",
+              value: `₹${parseFloat(insights.totalRevenue).toLocaleString()}`,
+            },
+            {
+              icon: <BarChartLine size={18} />, label: "Profit Margin",
+              value: `${insights.profitMargin}%`,
+            },
+            {
+              icon: <ArrowUpCircle size={18} />, label: "Issued",
+              value: insights.issueCount,
+            },
+            {
+              icon: <ArrowDownCircle size={18} />, label: "Purchased",
+              value: insights.purchaseCount,
+            },
+          ].map((c, i) => (
+            <div key={i} className="ent-stat-card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, background: "#eff6ff",
+                display: "flex", alignItems: "center", justifyContent: "center", color: "#1d4ed8", flexShrink: 0,
+              }}>
+                {c.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: "1.125rem", fontWeight: 700, color: "#111827" }}>{c.value}</div>
+                <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>{c.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="ent-table-wrap">
+        <div className="ent-table-toolbar">
+          <div className="ent-search-wrap">
+            <span className="ent-search-icon"><Search size={14} /></span>
+            <input className="ent-search" placeholder="Search by ID or product…"
+              value={search} onChange={e => handleSearch(e.target.value)} />
+          </div>
+          {/* Type filter */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {[
+              { val: "all",      label: "All" },
+              { val: "issue",    label: "Issues (OUT)" },
+              { val: "purchase", label: "Purchases (IN)" },
+            ].map((f) => (
+              <button key={f.val}
+                className={`ent-btn ent-btn-sm ${filterType === f.val ? "ent-btn-primary" : "ent-btn-secondary"}`}
+                onClick={() => handleFilter(f.val)}>
+                {f.label}
+              </button>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+          <span style={{ fontSize: "0.8125rem", color: "#9ca3af", whiteSpace: "nowrap" }}>
+            {filtered.length} records
+          </span>
+        </div>
 
-      <div style={styles.returnButtonContainer}>
-        <button style={styles.returnButton} onClick={handleReturn}>
-          Return
-        </button>
+        {loading ? (
+          <div style={{ padding: 48, textAlign: "center" }}>
+            <div className="ent-spinner" style={{ margin: "0 auto 12px" }} />
+            <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading transactions…</p>
+          </div>
+        ) : (
+          <>
+            <div className="ent-table-scroll">
+              <table className="ent-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Product ID</th>
+                    <th>Type</th>
+                    <th>Qty</th>
+                    <th>Rate</th>
+                    <th>Value</th>
+                    <th>Date</th>
+                    <th>User</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.length === 0 ? (
+                    <tr><td colSpan={8}>
+                      <div className="ent-empty">
+                        <div className="ent-empty-title">No transactions found</div>
+                      </div>
+                    </td></tr>
+                  ) : paginated.map((t, idx) => (
+                    <tr key={t.transactionId}>
+                      <td className="primary">{t.transactionId}</td>
+                      <td style={{ fontWeight: 500, color: "#111827" }}>{t.productId}</td>
+                      <td>
+                        <span className={`ent-badge ${t.transactionType === "issue" ? "ent-badge-yellow" : "ent-badge-green"}`}>
+                          {t.transactionType === "issue" ? "OUT" : "IN"}
+                        </span>
+                      </td>
+                      <td>{t.quantity}</td>
+                      <td>₹{t.rate}</td>
+                      <td style={{ fontWeight: 600, color: "#111827" }}>₹{t.transactionValue}</td>
+                      <td>{formatDate(t.transactionDate)}</td>
+                      <td style={{ color: "#6b7280" }}>{t.userId || user.username}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="ent-pagination">
+                <span>Showing {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE,filtered.length)} of {filtered.length}</span>
+                <div className="ent-pagination-btns">
+                  <button className="ent-page-btn" disabled={page===1} onClick={() => setPage(p=>p-1)}>‹ Prev</button>
+                  {[...Array(Math.min(totalPages, 7))].map((_,i) => (
+                    <button key={i} className={`ent-page-btn${page===i+1?" active":""}`} onClick={() => setPage(i+1)}>{i+1}</button>
+                  ))}
+                  {totalPages > 7 && <span style={{ padding: "4px 8px", color: "#9ca3af" }}>…</span>}
+                  <button className="ent-page-btn" disabled={page===totalPages} onClick={() => setPage(p=>p+1)}>Next ›</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 };
 

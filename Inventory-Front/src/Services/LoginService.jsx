@@ -1,7 +1,7 @@
 import axios from 'axios';
- 
-const LOGIN_URL='http://localhost:9898/inventory/login'
-const Role_URL ='http://localhost:9898/inventory/role'
+import API_BASE from "./config";
+const LOGIN_URL = `${API_BASE}/inventory/login`;
+const Role_URL  = `${API_BASE}/inventory/role`;
 export const registerNewUser = (user) => {
     return axios.post(LOGIN_URL, user);
 }

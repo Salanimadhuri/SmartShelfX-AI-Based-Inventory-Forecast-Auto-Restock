@@ -1,367 +1,194 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveProduct, generateProductId } from "../../Services/ProductService";
-
-const styles = {
-  container: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "1rem",
-    backgroundColor: "#f0f2f5",
-    minHeight: "100vh",
-  },
-  card: {
-    background: "#fff",
-    padding: "2.5rem 2rem",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    width: "100%",
-    maxWidth: "600px",
-  },
-  title: {
-    textAlign: "center",
-    color: "#007bff",
-    marginBottom: "25px",
-    fontSize: "1.8rem",
-    fontWeight: "700",
-    textDecoration: "underline",
-    textUnderlineOffset: "8px",
-    textDecorationColor: "#007bff",
-  },
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "20px",
-    marginBottom: "20px",
-  },
-  fullWidth: {
-    gridColumn: "1 / -1",
-  },
-  formGroup: {
-    display: "flex",
-    flexDirection: "column",
-  },
-  label: {
-    marginBottom: "5px",
-    fontWeight: "600",
-    color: "#555",
-    fontSize: "0.9rem",
-  },
-  input: {
-    padding: "8px 12px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    fontSize: "0.9rem",
-    boxSizing: "border-box",
-    transition: "border-color 0.3s",
-  },
-  inputError: {
-    border: "1px solid red",
-  },
-  errorText: {
-    color: "red",
-    fontSize: "0.75rem",
-    marginTop: "2px",
-  },
-  readOnlyInput: {
-    backgroundColor: "#e9ecef",
-    cursor: "not-allowed",
-    fontWeight: "bold",
-  },
-  buttonGroup: {
-    display: "flex",
-    justifyContent: "center",
-    gap: "20px",
-    marginTop: "20px",
-  },
-  button: {
-    padding: "10px 24px",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "1rem",
-    fontWeight: "600",
-    transition: "0.3s",
-    minWidth: "120px",
-  },
-  addButton: {
-    backgroundColor: "#28a745",
-    color: "white",
-  },
-  resetButton: {
-    backgroundColor: "#ffc107",
-    color: "white",
-  },
-  returnButton: {
-    backgroundColor: "#007bff",
-    color: "white",
-  },
-};
+import { BoxSeam, CheckCircle, ExclamationCircle, ArrowLeft } from "react-bootstrap-icons";
+import "../UI/EnterpriseStyles.css";
 
 const ProductAddition = () => {
   const navigate = useNavigate();
   const [product, setProduct] = useState({
-    productId: "",
-    productName: "",
-    sku: "",
-    purchasePrice: "",
-    stock: "",
-    reorderLevel: "",
-    vendorId: "",
-    status: true,
+    productId:"", productName:"", sku:"", purchasePrice:"",
+    salesPrice:"", stock:"", reorderLevel:"", vendorId:"", status:true,
   });
-
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const fetchProductId = async () => {
-      try {
-        const response = await generateProductId();
-        setProduct((prev) => ({ ...prev, productId: response.data }));
-      } catch (error) {
-        console.error("Error generating product ID:", error);
-      }
-    };
-    fetchProductId();
+    generateProductId()
+      .then(r => setProduct(p => ({ ...p, productId: r.data })))
+      .catch(console.error);
   }, []);
 
-  // 🧮 Handle field change + Auto-generate sales price
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setProduct((prev) => {
-      let updatedProduct = { ...prev, [name]: value };
-
-      // Auto-calculate sales price when purchasePrice changes
+    setProduct(p => {
+      const u = { ...p, [name]: value };
       if (name === "purchasePrice" && value) {
-        const purchase = parseFloat(value);
-        if (!isNaN(purchase)) {
-          const margin = 0.2; // 20% profit margin
-          updatedProduct.salesPrice = (purchase * (1 + margin)).toFixed(2);
-        } else {
-          updatedProduct.salesPrice = "";
-        }
+        const v = parseFloat(value);
+        if (!isNaN(v)) u.salesPrice = (v * 1.2).toFixed(2);
       }
-
-      return updatedProduct;
+      return u;
     });
+    setErrors(p => ({ ...p, [name]: "" }));
   };
 
   const validate = () => {
-    let tempErrors = {};
-    let isValid = true;
-
-    if (!product.productName.trim()) {
-      tempErrors.productName = "Product Name is required";
-      isValid = false;
-    }
-    if (!product.sku.trim()) {
-      tempErrors.sku = "SKU is required";
-      isValid = false;
-    }
-    if (!product.purchasePrice || Number(product.purchasePrice) < 1) {
-      tempErrors.purchasePrice = "Purchase Price must be at least 1";
-      isValid = false;
-    }
-    if (!product.salesPrice || Number(product.salesPrice) < 1) {
-      tempErrors.salesPrice = "Sales Price must be at least 1";
-      isValid = false;
-    }
-    if (!product.stock || Number(product.stock) < 1) {
-      tempErrors.stock = "Stock must be at least 1";
-      isValid = false;
-    }
-    if (!product.reorderLevel || Number(product.reorderLevel) < 1) {
-      tempErrors.reorderLevel = "Reorder Level must be at least 1";
-      isValid = false;
-    }
-    if (!product.vendorId.trim()) {
-      tempErrors.vendorId = "Vendor ID is required";
-      isValid = false;
-    }
-
-    setErrors(tempErrors);
-    return isValid;
+    const e = {};
+    if (!product.productName.trim()) e.productName = "Product name is required";
+    if (!product.sku.trim()) e.sku = "SKU is required";
+    if (!product.purchasePrice || Number(product.purchasePrice) < 1) e.purchasePrice = "Enter a valid purchase price";
+    if (!product.stock || Number(product.stock) < 1) e.stock = "Stock must be at least 1";
+    if (!product.reorderLevel || Number(product.reorderLevel) < 1) e.reorderLevel = "Reorder level must be at least 1";
+    if (!product.vendorId.trim()) e.vendorId = "Vendor ID is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validate()) return;
-
-    const updatedProduct = {
-      ...product,
-      status: Number(product.stock) > Number(product.reorderLevel),
-    };
-
+    setLoading(true);
     try {
-      await saveProduct(updatedProduct);
-      setErrors({});
-      alert("Product added successfully.");
-      navigate("/AdProdRepo");
-    } catch (err) {
-      console.error("Add product failed:", err);
-      alert("Add product failed. Check console.");
+      await saveProduct({ ...product, status: Number(product.stock) > Number(product.reorderLevel) });
+      setSaved(true);
+      setTimeout(() => navigate("/AdProdRepo"), 1600);
+    } catch {
+      setErrors({ general: "Failed to add product. Please try again." });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setProduct((prev) => ({
-      ...prev,
-      productName: "",
-      sku: "",
-      purchasePrice: "",
-      salesPrice: "",
-      stock: "",
-      reorderLevel: "",
-      vendorId: "",
-    }));
+    setProduct(p => ({ ...p, productName:"", sku:"", purchasePrice:"", salesPrice:"", stock:"", reorderLevel:"", vendorId:"" }));
     setErrors({});
   };
 
-  return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Add New Product</h2>
-        <form onSubmit={handleSubmit}>
-          <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Product ID</label>
-              <input
-                type="text"
-                name="productId"
-                value={product.productId}
-                readOnly
-                style={{ ...styles.input, ...styles.readOnlyInput }}
-              />
-            </div>
+  const stockHealthy = product.stock && product.reorderLevel && Number(product.stock) > Number(product.reorderLevel);
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Product Name</label>
-              <input
-                type="text"
-                name="productName"
-                value={product.productName}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(errors.productName ? styles.inputError : {}),
-                }}
-              />
-              {errors.productName && (
-                <p style={styles.errorText}>{errors.productName}</p>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>SKU</label>
-              <input
-                type="text"
-                name="sku"
-                value={product.sku}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(errors.sku ? styles.inputError : {}),
-                }}
-              />
-              {errors.sku && <p style={styles.errorText}>{errors.sku}</p>}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Purchase Price</label>
-              <input
-                type="number"
-                name="purchasePrice"
-                value={product.purchasePrice}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(errors.purchasePrice ? styles.inputError : {}),
-                }}
-              />
-              {errors.purchasePrice && (
-                <p style={styles.errorText}>{errors.purchasePrice}</p>
-              )}
-            </div>
-
-        
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Stock</label>
-              <input
-                type="number"
-                name="stock"
-                value={product.stock}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(errors.stock ? styles.inputError : {}),
-                }}
-              />
-              {errors.stock && <p style={styles.errorText}>{errors.stock}</p>}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Reorder Level</label>
-              <input
-                type="number"
-                name="reorderLevel"
-                value={product.reorderLevel}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(errors.reorderLevel ? styles.inputError : {}),
-                }}
-              />
-              {errors.reorderLevel && (
-                <p style={styles.errorText}>{errors.reorderLevel}</p>
-              )}
-            </div>
-
-            <div style={{ ...styles.formGroup, ...styles.fullWidth }}>
-              <label style={styles.label}>Vendor ID</label>
-              <input
-                type="text"
-                name="vendorId"
-                value={product.vendorId}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(errors.vendorId ? styles.inputError : {}),
-                }}
-              />
-              {errors.vendorId && (
-                <p style={styles.errorText}>{errors.vendorId}</p>
-              )}
-            </div>
-          </div>
-
-          <div style={styles.buttonGroup}>
-            <button
-              type="submit"
-              style={{ ...styles.button, ...styles.addButton }}
-            >
-              Add Product
-            </button>
-            <button
-              type="button"
-              style={{ ...styles.button, ...styles.resetButton }}
-              onClick={handleReset}
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              style={{ ...styles.button, ...styles.returnButton }}
-              onClick={() => navigate(-1)}
-            >
-              Return
-            </button>
-          </div>
-        </form>
+  if (saved) {
+    return (
+      <div style={{ minHeight:"100vh", background:"#f9fafb", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"var(--font,'Inter',sans-serif)" }}>
+        <div style={{ textAlign:"center" }}>
+          <CheckCircle size={40} color="#16a34a" style={{ marginBottom:12 }} />
+          <h3 style={{ fontWeight:700, color:"#111827", marginBottom:6 }}>Product added</h3>
+          <p style={{ color:"#6b7280", fontSize:"0.875rem" }}>Redirecting to product list…</p>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f9fafb", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 24px", fontFamily:"var(--font,'Inter',sans-serif)" }}>
+      <div style={{ width:"100%", maxWidth:620 }}>
+        <button onClick={() => navigate(-1)} style={{
+          display:"flex", alignItems:"center", gap:6, background:"none", border:"none",
+          color:"#6b7280", fontSize:"0.875rem", cursor:"pointer", fontFamily:"inherit",
+          padding:0, marginBottom:20,
+        }}>
+          <ArrowLeft size={14} /> Back
+        </button>
+
+        <div className="ent-card" style={{ padding:"28px 32px" }}>
+          {/* Header */}
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
+            <div style={{ width:40, height:40, borderRadius:10, background:"#eff6ff", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <BoxSeam size={20} color="#1d4ed8" />
+            </div>
+            <div>
+              <h2 style={{ fontWeight:700, color:"#111827", fontSize:"1.125rem", margin:0 }}>Add New Product</h2>
+              <p style={{ color:"#6b7280", fontSize:"0.8125rem", margin:"2px 0 0" }}>Fill in the product details below</p>
+            </div>
+          </div>
+
+          {errors.general && (
+            <div className="ent-alert ent-alert-error">
+              <ExclamationCircle size={15} /> {errors.general}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            {/* Read-only Product ID */}
+            <div className="ent-field">
+              <label className="ent-label">Product ID <span style={{ color:"#9ca3af", fontWeight:400 }}>(auto-generated)</span></label>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <input value={product.productId} disabled className="ent-input" style={{ maxWidth:200 }} />
+                <span className="ent-badge ent-badge-blue">Auto</span>
+              </div>
+            </div>
+
+            <div className="ent-grid-2">
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="productName">Product Name</label>
+                <input id="productName" name="productName" value={product.productName} onChange={handleChange}
+                  className={`ent-input${errors.productName?" error":""}`} placeholder="e.g. Laptop Pro 15" />
+                {errors.productName && <p className="ent-error">{errors.productName}</p>}
+              </div>
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="sku">SKU</label>
+                <input id="sku" name="sku" value={product.sku} onChange={handleChange}
+                  className={`ent-input${errors.sku?" error":""}`} placeholder="e.g. SKU-001" />
+                {errors.sku && <p className="ent-error">{errors.sku}</p>}
+              </div>
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="purchasePrice">Purchase Price (₹)</label>
+                <input id="purchasePrice" name="purchasePrice" type="number" value={product.purchasePrice} onChange={handleChange}
+                  className={`ent-input${errors.purchasePrice?" error":""}`} placeholder="0.00" min="1" />
+                {errors.purchasePrice && <p className="ent-error">{errors.purchasePrice}</p>}
+              </div>
+              <div className="ent-field">
+                <label className="ent-label">Sales Price (₹) <span style={{ color:"#9ca3af", fontWeight:400 }}>(auto: +20%)</span></label>
+                <input name="salesPrice" type="number" value={product.salesPrice} onChange={handleChange}
+                  className="ent-input" placeholder="Auto-calculated" />
+              </div>
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="stock">Stock Quantity</label>
+                <input id="stock" name="stock" type="number" value={product.stock} onChange={handleChange}
+                  className={`ent-input${errors.stock?" error":""}`} placeholder="0" min="1" />
+                {errors.stock && <p className="ent-error">{errors.stock}</p>}
+              </div>
+              <div className="ent-field">
+                <label className="ent-label" htmlFor="reorderLevel">Reorder Level</label>
+                <input id="reorderLevel" name="reorderLevel" type="number" value={product.reorderLevel} onChange={handleChange}
+                  className={`ent-input${errors.reorderLevel?" error":""}`} placeholder="0" min="1" />
+                {errors.reorderLevel && <p className="ent-error">{errors.reorderLevel}</p>}
+              </div>
+            </div>
+
+            <div className="ent-field">
+              <label className="ent-label" htmlFor="vendorId">Vendor ID</label>
+              <input id="vendorId" name="vendorId" value={product.vendorId} onChange={handleChange}
+                className={`ent-input${errors.vendorId?" error":""}`} placeholder="e.g. V001" style={{ maxWidth:240 }} />
+              {errors.vendorId && <p className="ent-error">{errors.vendorId}</p>}
+            </div>
+
+            {/* Stock health indicator */}
+            {product.stock && product.reorderLevel && (
+              <div className={`ent-alert ${stockHealthy ? "ent-alert-success" : "ent-alert-warning"}`}>
+                {stockHealthy ? <CheckCircle size={14} /> : <ExclamationCircle size={14} />}
+                {stockHealthy
+                  ? "Stock is above reorder level — safe to add"
+                  : "Stock is at or below reorder level — will trigger a low stock alert"}
+              </div>
+            )}
+
+            <div style={{ display:"flex", gap:8, marginTop:4 }}>
+              <button type="submit" disabled={loading}
+                className="ent-btn ent-btn-primary ent-btn-lg" style={{ flex:1 }}>
+                {loading ? (
+                  <><span className="ent-spinner" style={{ width:16, height:16, borderWidth:2 }} /> Saving…</>
+                ) : "Add Product"}
+              </button>
+              <button type="button" onClick={handleReset} className="ent-btn ent-btn-secondary ent-btn-lg">Reset</button>
+              <button type="button" onClick={() => navigate(-1)} className="ent-btn ent-btn-ghost ent-btn-lg">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <style>{`@keyframes ent-spin { to { transform: rotate(360deg); } }
+        .ent-spinner { display:inline-block; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:ent-spin 0.7s linear infinite; }
+      `}</style>
     </div>
   );
 };

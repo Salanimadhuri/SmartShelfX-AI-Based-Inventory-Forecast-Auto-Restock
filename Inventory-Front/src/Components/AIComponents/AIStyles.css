@@ -1,0 +1,80 @@
+/* ============================================================
+   AI Dashboard Global Animations & Shared Styles
+   ============================================================ */
+
+@keyframes aiCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes aiPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+@keyframes aiSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes aiSlideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aiGlow {
+  0%,100% { box-shadow: 0 0 10px rgba(25,118,210,0.25); }
+  50%      { box-shadow: 0 0 24px rgba(25,118,210,0.55); }
+}
+
+/* AI score ring */
+.ai-score-ring {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.45rem; font-weight: 800;
+  animation: aiGlow 2.5s infinite;
+}
+
+/* Scrollable AI insight text */
+.ai-insight-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.ai-insight-scroll::-webkit-scrollbar { width: 4px; }
+.ai-insight-scroll::-webkit-scrollbar-track { background: transparent; }
+.ai-insight-scroll::-webkit-scrollbar-thumb { background: rgba(25,118,210,0.3); border-radius: 4px; }
+
+/* Responsive grid for AI cards */
+.ai-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.ai-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+@media (max-width: 1024px) {
+  .ai-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 680px) {
+  .ai-grid-3, .ai-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Loading spinner */
+.ai-spinner {
+  width: 44px; height: 44px;
+  border: 4px solid rgba(25,118,210,0.18);
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: aiSpin 0.85s linear infinite;
+  margin: 0 auto;
+}
+
+/* Alert badge pulse */
+.ai-alert-pulse {
+  animation: aiPulse 1.6s ease-in-out infinite;
+}
